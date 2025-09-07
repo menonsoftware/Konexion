@@ -9,9 +9,10 @@
   import ErrorMessage from '$lib/components/ErrorMessage.svelte';
   import KeyboardShortcuts from '$lib/components/KeyboardShortcuts.svelte';
   import Sidebar from '$lib/components/Sidebar.svelte';
+  import Modal from '$lib/components/Modal.svelte';
   import { wsService } from '$lib/websocket.js';
   import { fetchAvailableModels } from '$lib/api.js';
-  import { availableModels, selectedModel, isConnected, isDarkMode, maxTokens } from '$lib/stores.js';
+  import { availableModels, selectedModel, isConnected, isDarkMode, maxTokens, globalModal } from '$lib/stores.js';
 
   let isInitialized = false;
   let initError = null;
@@ -143,3 +144,18 @@
 </div>
 
 <KeyboardShortcuts bind:show={showShortcuts} />
+
+<!-- Global Modal -->
+<Modal
+  show={$globalModal.show}
+  title={$globalModal.title}
+  description={$globalModal.description}
+  content={$globalModal.content}
+  confirmText={$globalModal.confirmText}
+  cancelText={$globalModal.cancelText}
+  confirmClass={$globalModal.confirmClass}
+  cancelClass={$globalModal.cancelClass}
+  icon={$globalModal.icon}
+  onConfirm={$globalModal.onConfirm}
+  onCancel={$globalModal.onCancel}
+/>

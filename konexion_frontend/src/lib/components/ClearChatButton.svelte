@@ -1,31 +1,33 @@
 <script>
-  import { messages } from '$lib/stores.js';
+  import { messages, globalModal } from '$lib/stores.js';
   import { onMount } from 'svelte';
-  
-  let showConfirmDialog = false;
   
   // Check if there are any messages
   $: hasMessages = $messages.length > 0;
   
   function handleClearClick() {
     if (!hasMessages) return; // Don't show dialog if no messages
-    showConfirmDialog = true;
-  }
-  
-  function confirmClear() {
-    messages.clear();
-    showConfirmDialog = false;
-  }
-  
-  function cancelClear() {
-    showConfirmDialog = false;
-  }
-  
-  // Close dialog on escape key
-  function handleKeydown(event) {
-    if (event.key === 'Escape' && showConfirmDialog) {
-      cancelClear();
-    }
+    
+    // Configure and show the global modal
+    globalModal.show({
+      title: 'Clear Chat History',
+      description: 'This action cannot be undone',
+      content: 'Are you sure you want to clear all chat messages? This will permanently delete your entire conversation history.',
+      confirmText: 'Clear Chat',
+      cancelText: 'Cancel',
+      confirmClass: 'px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 border border-red-600 dark:border-red-600 rounded-lg transition-colors focus:ring-2 focus:ring-red-500 focus:border-red-500',
+      icon: {
+        svg: '<svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>',
+        bgClass: 'bg-red-100 dark:bg-red-900/30'
+      },
+      onConfirm: () => {
+        messages.clear();
+        globalModal.hide();
+      },
+      onCancel: () => {
+        globalModal.hide();
+      }
+    });
   }
   
   // Listen for keyboard shortcut
@@ -40,8 +42,6 @@
     };
   });
 </script>
-
-<svelte:window on:keydown={handleKeydown} />
 
 <div class="relative">
   <!-- Clear Chat Button -->
@@ -63,49 +63,4 @@
       </span>
     {/if}
   </button>
-
-  <!-- Confirmation Dialog -->
-  {#if showConfirmDialog}
-    <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-600">
-        <!-- Dialog Header -->
-        <div class="flex items-center space-x-3 mb-4">
-          <div class="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-            <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Clear Chat History</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone</p>
-          </div>
-        </div>
-
-        <!-- Dialog Content -->
-        <div class="mb-6">
-          <p class="text-gray-700 dark:text-gray-300">
-            Are you sure you want to clear all chat messages? This will permanently delete your entire conversation history.
-          </p>
-        </div>
-
-        <!-- Dialog Actions -->
-        <div class="flex space-x-3 justify-end">
-          <button
-            type="button"
-            on:click={cancelClear}
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg transition-colors focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            on:click={confirmClear}
-            class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 border border-red-600 dark:border-red-600 rounded-lg transition-colors focus:ring-2 focus:ring-red-500 focus:border-red-500"
-          >
-            Clear Chat
-          </button>
-        </div>
-      </div>
-    </div>
-  {/if}
 </div>

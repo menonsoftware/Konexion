@@ -141,3 +141,56 @@ export const isDarkMode = createDarkModeStore();
 
 // Typing indicator store
 export const isTyping = writable(false);
+
+// Global modal store for app-level modals
+function createModalStore() {
+  const { subscribe, set } = writable({
+    show: false,
+    title: '',
+    description: '',
+    content: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    confirmClass: 'px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-600 rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+    cancelClass: 'px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg transition-colors focus:ring-2 focus:ring-gray-500 focus:border-gray-500',
+    icon: null,
+    onConfirm: null,
+    onCancel: null
+  });
+
+  return {
+    subscribe,
+    show: (config) => {
+      set({
+        show: true,
+        title: config.title || '',
+        description: config.description || '',
+        content: config.content || '',
+        confirmText: config.confirmText || 'Confirm',
+        cancelText: config.cancelText || 'Cancel',
+        confirmClass: config.confirmClass || 'px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-600 rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+        cancelClass: config.cancelClass || 'px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg transition-colors focus:ring-2 focus:ring-gray-500 focus:border-gray-500',
+        icon: config.icon || null,
+        onConfirm: config.onConfirm || null,
+        onCancel: config.onCancel || null
+      });
+    },
+    hide: () => {
+      set({
+        show: false,
+        title: '',
+        description: '',
+        content: '',
+        confirmText: 'Confirm',
+        cancelText: 'Cancel',
+        confirmClass: 'px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-600 rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+        cancelClass: 'px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg transition-colors focus:ring-2 focus:ring-gray-500 focus:border-gray-500',
+        icon: null,
+        onConfirm: null,
+        onCancel: null
+      });
+    }
+  };
+}
+
+export const globalModal = createModalStore();
