@@ -161,11 +161,11 @@ konexion_backend/
 ├── pyproject.toml       # Project dependencies and metadata
 ├── example.env          # Environment variables template
 ├── .env                 # Your environment configuration (create from example.env)
-├── ai_models/          # AI provider implementations
-│   ├── groq.py         # Groq AI integration
-│   └── ollama.py       # Ollama integration
-└── models/             # Data models and schemas
-    └── ai.py           # AI model definitions
+├── ai_models/           # AI provider implementations
+│   ├── groq.py          # Groq AI integration
+│   └── ollama.py        # Ollama integration
+└── models/              # Data models and schemas
+    └── ai.py            # AI model definitions
 ```
 
 ## Development
@@ -231,4 +231,4 @@ uv sync --reinstall
 
 ## License
 
-[Add your license information here]
+This project is licensed under the MIT License - see the main project README for details.
