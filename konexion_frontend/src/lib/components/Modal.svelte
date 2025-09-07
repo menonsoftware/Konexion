@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { browser } from '$app/environment';
   
   export let show = false;
@@ -14,10 +14,15 @@
   export let cancelClass = 'px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg transition-colors focus:ring-2 focus:ring-gray-500 focus:border-gray-500';
   export let icon = null;
   
+  let confirmButtonRef;
+  
   function handleKeydown(event) {
     if (!show) return;
     if (event.key === 'Escape') {
       handleCancel();
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      handleConfirm();
     }
   }
   
@@ -35,6 +40,15 @@
     if (event.target === event.currentTarget) {
       handleCancel();
     }
+  }
+
+  // Focus the confirm button when modal opens
+  $: if (show && browser && confirmButtonRef) {
+    tick().then(() => {
+      if (confirmButtonRef && typeof confirmButtonRef.focus === 'function') {
+        confirmButtonRef.focus();
+      }
+    });
   }
 
   onMount(() => {
@@ -97,6 +111,7 @@
           {cancelText}
         </button>
         <button
+          bind:this={confirmButtonRef}
           type="button"
           on:click={handleConfirm}
           class={confirmClass}

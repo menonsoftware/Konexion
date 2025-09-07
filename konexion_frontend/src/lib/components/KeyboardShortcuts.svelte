@@ -82,6 +82,16 @@
         </div>
         
         <div class="flex items-center justify-between">
+          <span class="text-gray-700 dark:text-gray-300">Confirm dialog action</span>
+          <kbd class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded">Enter</kbd>
+        </div>
+        
+        <div class="flex items-center justify-between">
+          <span class="text-gray-700 dark:text-gray-300">Cancel dialog</span>
+          <kbd class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded">Esc</kbd>
+        </div>
+        
+        <div class="flex items-center justify-between">
           <span class="text-gray-700 dark:text-gray-300">Send message</span>
           <kbd class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded">Enter</kbd>
         </div>
