@@ -155,23 +155,14 @@ async def chat(websocket: WebSocket):
                 })
                 
             elif images and not supports_vision:
-                logger.info(f"Model {selected_model} does not support vision. Converting {len(images)} images to text descriptions.")
+                logger.warning(f"Model {selected_model} does not support vision. User attempted to send {len(images)} images.")
                 
-                # Fallback to text descriptions for non-vision models
-                final_message = user_message_str
-                image_descriptions = []
-                for i, image in enumerate(images, 1):
-                    image_descriptions.append(f"[Image {i}: {image.get('name', 'Unknown')} ({image.get('type', 'Unknown type')})]")
-                
-                if final_message.strip():
-                    final_message = f"{final_message}\n\nAttached images: {', '.join(image_descriptions)}"
-                else:
-                    final_message = f"Please analyze these images: {', '.join(image_descriptions)}"
-                
-                messages.append({
-                    "role": "user", 
-                    "content": final_message
+                # Send error message for models that don't support vision when images are provided
+                await websocket.send_json({
+                    "error": f"The model '{selected_model}' does not support image analysis. Please select a vision-capable model (like llava, bakllava, moondream) or remove the images to proceed with text-only chat."
                 })
+                await websocket.send_json({"finish_reason": "error"})
+                continue
                 
             else:
                 # No images, simple text message

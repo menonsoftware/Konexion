@@ -1,6 +1,10 @@
 """
 Configuration module for the Konexion backend application.
-Loads all environment variables using Pydantic Settings for type safety and validation.
+Lo    # Vision Models Configuration
+    vision_models: str = Field(
+        default="llava,bakllava,llava-phi3,moondream,vision,llama-3.2-11b-vision-preview,llama-3.2-90b-vision-preview,gpt-4-vision-preview,gpt-4o",
+        description="Comma-separated list of model keywords that support vision capabilities"
+    ),ll environment variables using Pydantic Settings for type safety and validation.
 """
 
 from typing import Optional

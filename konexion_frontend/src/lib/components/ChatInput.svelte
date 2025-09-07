@@ -26,12 +26,17 @@
   // Check if current model supports vision
   $: supportsVision = $selectedModel && (
     $selectedModel.toLowerCase().includes('gemma3') ||
-    $selectedModel.toLowerCase().includes('llava') ||
     $selectedModel.toLowerCase().includes('scout') ||
     $selectedModel.toLowerCase().includes('maverick') ||
+    $selectedModel.toLowerCase().includes('llava') ||
+    $selectedModel.toLowerCase().includes('bakllava') ||
+    $selectedModel.toLowerCase().includes('llava-phi3') ||
+    $selectedModel.toLowerCase().includes('moondream') ||
     $selectedModel.toLowerCase().includes('vision') ||
     $selectedModel.toLowerCase().includes('llama-3.2-11b-vision-preview') ||
-    $selectedModel.toLowerCase().includes('llama-3.2-90b-vision-preview')
+    $selectedModel.toLowerCase().includes('llama-3.2-90b-vision-preview') ||
+    $selectedModel.toLowerCase().includes('gpt-4-vision-preview') ||
+    $selectedModel.toLowerCase().includes('gpt-4o')
   );
   
   // Reset selected index when filtered models change

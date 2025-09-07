@@ -124,17 +124,50 @@ def stream_ollama_chat(model_name, messages, max_tokens=None):
     # Use provided max_tokens or fall back to config default
     tokens_limit = max_tokens if max_tokens is not None else ollama_config.max_tokens
     
+    # Process messages to handle vision content for Ollama format
+    processed_messages = []
+    images_list = []
+    
+    for message in messages:
+        if isinstance(message.get('content'), list):
+            # Handle vision content (list of content items)
+            text_content = ""
+            for content_item in message['content']:
+                if content_item.get('type') == 'text':
+                    text_content += content_item.get('text', '')
+                elif content_item.get('type') == 'image_url':
+                    # Extract base64 image data for Ollama
+                    image_url = content_item.get('image_url', {}).get('url', '')
+                    if ',' in image_url:
+                        # Remove data URL prefix (data:image/jpeg;base64,)
+                        base64_data = image_url.split(',')[1]
+                        images_list.append(base64_data)
+            
+            processed_messages.append({
+                "role": message["role"],
+                "content": text_content.strip() or "What's in this image?"
+            })
+        else:
+            # Regular text message
+            processed_messages.append(message)
+    
     payload = {
         "model": model_name,
-        "messages": messages,
+        "messages": processed_messages,
         "stream": True,
         "options": {
             "num_predict": tokens_limit
         }
     }
     
+    # Add images to payload if present (Ollama format)
+    if images_list:
+        payload["images"] = images_list
+        logger.info(f"Adding {len(images_list)} images to Ollama request for model: {model_name}")
+    
     try:
         logger.debug(f"Starting chat stream with Ollama model: {model_name}")
+        logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
         response = requests.post(
             client_config["chat_url"],
             json=payload,
@@ -165,6 +198,11 @@ def stream_ollama_chat(model_name, messages, max_tokens=None):
                     logger.warning(f"Error parsing Ollama response chunk: {e}")
                     continue
                     
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error streaming from Ollama: {e}")
+        logger.error(f"Response status: {e.response.status_code}")
+        logger.error(f"Response content: {e.response.text}")
+        yield f"Error: HTTP {e.response.status_code} - {e.response.text}"
     except requests.exceptions.RequestException as e:
         logger.error(f"Error streaming from Ollama: {e}")
         yield f"Error: {str(e)}"

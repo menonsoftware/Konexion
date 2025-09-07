@@ -244,7 +244,7 @@ Ensure all required environment variables are set in production:
 
 ## Roadmap
 
-- [ ] Image and attachment support
+- [ ] Image and attachment support - WIP
 - [ ] User authentication and sessions
 - [ ] Chat history persistence
 - [ ] Multi-user support
