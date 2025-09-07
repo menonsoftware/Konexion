@@ -9,7 +9,7 @@ import logging
 from starlette.websockets import WebSocketDisconnect
 from ai_models.groq import get_groq_client, get_groq_models
 from ai_models.ollama import get_ollama_models, stream_ollama_chat
-from config import get_security_config, get_server_config, get_logging_config
+from config import get_security_config, get_server_config, get_logging_config, get_vision_config
 
 # Setup logging
 logging_config = get_logging_config()
@@ -80,6 +80,8 @@ async def chat(websocket: WebSocket):
             logger.debug(f"Message type: {type(data.get('message'))}, Message: {data.get('message')}")
             user_message = data.get("message")
             selected_model = data.get("model")
+            images = data.get("images", [])
+            max_tokens = data.get("max_tokens")  # Get max_tokens from frontend
 
             if not user_message or not selected_model:
                 logger.warning("Received incomplete data: missing message or model")
@@ -105,9 +107,78 @@ async def chat(websocket: WebSocket):
                 {
                     "role": "system", 
                     "content": "You are a helpful assistant."
-                },
-                {"role": "user", "content": user_message_str},
+                }
             ]
+            
+            # Check if the selected model supports vision (using configuration)
+            vision_config = get_vision_config()
+            supports_vision = vision_config.supports_vision(selected_model)
+            
+            # Handle message with images based on model capabilities
+            if images and supports_vision:
+                logger.info(f"Processing {len(images)} images for vision-enabled model: {selected_model}")
+                
+                # Prepare user message content for vision models
+                user_content = []
+                
+                # Add text if present
+                if user_message_str.strip():
+                    user_content.append({
+                        "type": "text",
+                        "text": user_message_str
+                    })
+                else:
+                    user_content.append({
+                        "type": "text",
+                        "text": "What's in this image?"
+                    })
+                
+                # Add images using Groq vision schema
+                for image in images:
+                    if image.get("data"):
+                        # Extract base64 data from data URL format: data:image/jpeg;base64,base64_string
+                        if "," in image["data"]:
+                            base64_data = image["data"].split(",")[1]
+                            image_type = image.get("type", "image/jpeg")
+                            
+                            user_content.append({
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{image_type};base64,{base64_data}"
+                                }
+                            })
+                            logger.debug(f"Added image to vision content: {image.get('name', 'Unknown')}")
+                
+                messages.append({
+                    "role": "user",
+                    "content": user_content  # type: ignore
+                })
+                
+            elif images and not supports_vision:
+                logger.info(f"Model {selected_model} does not support vision. Converting {len(images)} images to text descriptions.")
+                
+                # Fallback to text descriptions for non-vision models
+                final_message = user_message_str
+                image_descriptions = []
+                for i, image in enumerate(images, 1):
+                    image_descriptions.append(f"[Image {i}: {image.get('name', 'Unknown')} ({image.get('type', 'Unknown type')})]")
+                
+                if final_message.strip():
+                    final_message = f"{final_message}\n\nAttached images: {', '.join(image_descriptions)}"
+                else:
+                    final_message = f"Please analyze these images: {', '.join(image_descriptions)}"
+                
+                messages.append({
+                    "role": "user", 
+                    "content": final_message
+                })
+                
+            else:
+                # No images, simple text message
+                messages.append({
+                    "role": "user", 
+                    "content": user_message_str
+                })
             
             logger.debug(f"Prepared messages for AI: {messages}")
             logger.info(f"Processing chat request with model: {selected_model}")
@@ -124,12 +195,20 @@ async def chat(websocket: WebSocket):
                 if is_groq_model:
                     logger.info(f"Using Groq client for model: {selected_model}")
                     # Use Groq streaming with optimized batching
-                    stream = get_groq_client().chat.completions.create(
-                        model=str(selected_model),
-                        messages=messages,
-                        stop=None,
-                        stream=True,
-                    )
+                    # Prepare chat completion parameters
+                    completion_params = {
+                        "model": str(selected_model),
+                        "messages": messages,  # type: ignore
+                        "stop": None,
+                        "stream": True,
+                    }
+                    
+                    # Add max_tokens if provided
+                    if max_tokens is not None:
+                        completion_params["max_tokens"] = max_tokens
+                        logger.debug(f"Using custom max_tokens: {max_tokens}")
+                    
+                    stream = get_groq_client().chat.completions.create(**completion_params)
                     
                     # Batch chunks for better network efficiency
                     chunk_buffer = ""
@@ -173,7 +252,7 @@ async def chat(websocket: WebSocket):
                     BATCH_SIZE = 20  # Characters to batch
                     BATCH_TIMEOUT = 0.05  # 50ms max delay
                     
-                    for chunk in stream_ollama_chat(selected_model, messages):
+                    for chunk in stream_ollama_chat(selected_model, messages, max_tokens):
                         if chunk:  # Only process non-empty chunks
                             chunk_buffer += chunk
                             

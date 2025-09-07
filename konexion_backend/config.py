@@ -27,6 +27,10 @@ class Settings(BaseSettings):
         default=30,
         description="Request timeout in seconds"
     )
+    ollama_max_tokens: int = Field(
+        default=2048,
+        description="Maximum number of tokens to generate in responses"
+    )
     
     # Server Configuration
     server_host: str = Field(default="0.0.0.0", description="Server host")
@@ -59,6 +63,12 @@ class Settings(BaseSettings):
     )
     log_file: Optional[str] = Field(default=None, description="Log file path")
     
+    # Vision Models Configuration
+    vision_models: str = Field(
+        default="gemma3,llava,scout,maverick,vision,llama-3.2-11b-vision-preview,llama-3.2-90b-vision-preview",
+        description="Comma-separated list of model keywords that support vision capabilities"
+    )
+    
     # Environment
     environment: str = Field(default="development", description="Application environment")
     
@@ -73,6 +83,11 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """Convert CORS origins string to list."""
         return [origin.strip() for origin in self.cors_origins.split(",")]
+    
+    @property
+    def vision_models_list(self) -> list[str]:
+        """Convert vision models string to list."""
+        return [model.strip().lower() for model in self.vision_models.split(",")]
 
 
 class GroqConfig:
@@ -103,6 +118,10 @@ class OllamaConfig:
     @property
     def timeout(self) -> int:
         return self._settings.ollama_timeout
+    
+    @property
+    def max_tokens(self) -> int:
+        return self._settings.ollama_max_tokens
 
 
 class ServerConfig:
@@ -193,6 +212,26 @@ class LoggingConfig:
         return self._settings.log_file
 
 
+class VisionConfig:
+    """Vision models configuration accessor."""
+    
+    def __init__(self, settings: Settings):
+        self._settings = settings
+    
+    @property
+    def models(self) -> str:
+        return self._settings.vision_models
+    
+    @property
+    def models_list(self) -> list[str]:
+        return self._settings.vision_models_list
+    
+    def supports_vision(self, model_name: str) -> bool:
+        """Check if a model supports vision capabilities."""
+        model_lower = model_name.lower()
+        return any(vision_keyword in model_lower for vision_keyword in self.models_list)
+
+
 # Global settings instance
 settings = Settings()
 
@@ -203,6 +242,7 @@ server_config = ServerConfig(settings)
 database_config = DatabaseConfig(settings)
 security_config = SecurityConfig(settings)
 logging_config = LoggingConfig(settings)
+vision_config = VisionConfig(settings)
 
 
 def get_settings() -> Settings:
@@ -218,7 +258,7 @@ def reload_settings() -> Settings:
     Reload settings from environment variables and .env file.
     Useful for testing or runtime configuration changes.
     """
-    global settings, groq_config, ollama_config, server_config, database_config, security_config, logging_config
+    global settings, groq_config, ollama_config, server_config, database_config, security_config, logging_config, vision_config
     settings = Settings()
     groq_config = GroqConfig(settings)
     ollama_config = OllamaConfig(settings)
@@ -226,6 +266,7 @@ def reload_settings() -> Settings:
     database_config = DatabaseConfig(settings)
     security_config = SecurityConfig(settings)
     logging_config = LoggingConfig(settings)
+    vision_config = VisionConfig(settings)
     return settings
 
 
@@ -260,6 +301,11 @@ def get_logging_config() -> LoggingConfig:
     return logging_config
 
 
+def get_vision_config() -> VisionConfig:
+    """Get vision configuration."""
+    return vision_config
+
+
 # Export commonly used settings for easy access
 __all__ = [
     "Settings",
@@ -269,6 +315,7 @@ __all__ = [
     "DatabaseConfig", 
     "SecurityConfig",
     "LoggingConfig",
+    "VisionConfig",
     "settings",
     "groq_config",
     "ollama_config", 
@@ -276,6 +323,7 @@ __all__ = [
     "database_config",
     "security_config",
     "logging_config",
+    "vision_config",
     "get_settings",
     "reload_settings",
     "get_groq_config",
@@ -284,4 +332,5 @@ __all__ = [
     "get_database_config",
     "get_security_config",
     "get_logging_config",
+    "get_vision_config",
 ]

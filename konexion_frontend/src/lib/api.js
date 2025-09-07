@@ -1,5 +1,7 @@
 // API service for backend communication
-const API_BASE_URL = typeof window !== 'undefined' && import.meta.env.DEV ? '/api' : 'http://localhost:8000/api';
+import { config } from './config.js';
+
+const API_BASE_URL = config.api.baseUrl;
 
 export async function fetchAvailableModels() {
   try {
@@ -12,11 +14,7 @@ export async function fetchAvailableModels() {
   } catch (error) {
     console.error('Error fetching models:', error);
     // Return default models if API fails
-    return [
-      { model_id: 'llama3-8b-8192', context_window: 8192, owned_by: 'meta', client_type: 'groq' },
-      { model_id: 'mixtral-8x7b-32768', context_window: 32768, owned_by: 'mistral', client_type: 'groq' },
-      { model_id: 'gemma-7b-it', context_window: 8192, owned_by: 'google', client_type: 'groq' }
-    ];
+    return config.defaultModels;
   }
 }
 

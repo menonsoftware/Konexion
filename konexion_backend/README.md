@@ -65,6 +65,8 @@ GROQ_URL="https://api.groq.com/openai/v1/models"
 
 # Ollama Configuration (Optional - for local AI models)
 OLLAMA_URL="http://localhost:11434"
+OLLAMA_TIMEOUT=30
+OLLAMA_MAX_TOKENS=2048
 
 # Server Configuration
 SERVER_HOST="0.0.0.0"
@@ -88,6 +90,8 @@ ENVIRONMENT="development"
 | `GROQ_API_KEY` | API key for Groq AI services | `None` | Optional |
 | `GROQ_URL` | Groq API base URL | `https://api.groq.com/openai/v1/models` | No |
 | `OLLAMA_URL` | Ollama service URL | `http://localhost:11434` | No |
+| `OLLAMA_TIMEOUT` | Ollama request timeout in seconds | `30` | No |
+| `OLLAMA_MAX_TOKENS` | Maximum tokens to generate in Ollama responses | `2048` | No |
 | `SERVER_HOST` | Server bind address | `0.0.0.0` | No |
 | `SERVER_PORT` | Server port | `8000` | No |
 | `DEBUG` | Enable debug mode | `false` | No |

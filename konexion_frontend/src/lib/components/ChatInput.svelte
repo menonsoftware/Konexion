@@ -1,5 +1,5 @@
 <script>
-  import { selectedModel, availableModels, isLoading } from '$lib/stores.js';
+  import { selectedModel, availableModels, isLoading, maxTokens } from '$lib/stores.js';
   import { wsService } from '$lib/websocket.js';
   import { createEventDispatcher } from 'svelte';
   
@@ -11,6 +11,8 @@
   let modelSearchQuery = '';
   let filteredModels = [];
   let selectedModelIndex = -1;
+  let selectedImages = [];
+  let fileInput;
   
   // Filter models based on search query
   $: filteredModels = $availableModels.filter(model => {
@@ -21,6 +23,17 @@
     );
   });
   
+  // Check if current model supports vision
+  $: supportsVision = $selectedModel && (
+    $selectedModel.toLowerCase().includes('gemma3') ||
+    $selectedModel.toLowerCase().includes('llava') ||
+    $selectedModel.toLowerCase().includes('scout') ||
+    $selectedModel.toLowerCase().includes('maverick') ||
+    $selectedModel.toLowerCase().includes('vision') ||
+    $selectedModel.toLowerCase().includes('llama-3.2-11b-vision-preview') ||
+    $selectedModel.toLowerCase().includes('llama-3.2-90b-vision-preview')
+  );
+  
   // Reset selected index when filtered models change
   $: if (filteredModels) {
     selectedModelIndex = -1;
@@ -29,11 +42,61 @@
   function handleSubmit(event) {
     event.preventDefault();
     
-    if (message.trim() && !$isLoading && $selectedModel) {
-      wsService.sendMessage(message.trim(), $selectedModel);
+    if ((message.trim() || selectedImages.length > 0) && !$isLoading && $selectedModel) {
+      wsService.sendMessage(message.trim(), $selectedModel, selectedImages, $maxTokens);
       message = '';
+      selectedImages = [];
       adjustTextareaHeight();
     }
+  }
+  
+  function handleImageSelect() {
+    fileInput.click();
+  }
+  
+  function handleFileChange(event) {
+    const files = Array.from(event.target.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (files.length > imageFiles.length) {
+      alert('Only image files are supported. Non-image files have been filtered out.');
+    }
+    
+    imageFiles.forEach(file => {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        alert(`Image "${file.name}" is too large. Maximum size is 10MB.`);
+        return;
+      }
+      
+      if (selectedImages.length >= 5) { // Limit to 5 images
+        alert('You can attach up to 5 images at once.');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageData = {
+          id: Date.now() + Math.random(),
+          file: file,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          dataUrl: e.target.result
+        };
+        selectedImages = [...selectedImages, imageData];
+      };
+      reader.onerror = () => {
+        alert(`Failed to read image "${file.name}". Please try again.`);
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    // Reset file input
+    event.target.value = '';
+  }
+  
+  function removeImage(imageId) {
+    selectedImages = selectedImages.filter(img => img.id !== imageId);
   }
   
   function handleKeyDown(event) {
@@ -111,12 +174,66 @@
 
 <svelte:window on:click={handleClickOutside} />
 
+<!-- Hidden file input -->
+<input
+  bind:this={fileInput}
+  type="file"
+  accept="image/*"
+  multiple
+  on:change={handleFileChange}
+  class="hidden"
+  aria-label="Select images"
+/>
+
 <div class="bg-gray-100 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-600 px-4 sm:px-6 py-4">
+  <!-- Image previews -->
+  {#if selectedImages.length > 0}
+    <div class="mb-4">
+      <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+        {selectedImages.length} image{selectedImages.length > 1 ? 's' : ''} attached:
+      </div>
+      <div class="flex flex-wrap gap-2">
+        {#each selectedImages as image (image.id)}
+          <div class="relative group">
+            <img
+              src={image.dataUrl}
+              alt={image.name}
+              class="w-20 h-20 object-cover rounded-lg border border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
+            />
+            <button
+              type="button"
+              on:click={() => removeImage(image.id)}
+              class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+              aria-label="Remove {image.name}"
+              title="Remove image"
+            >
+              ×
+            </button>
+            <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg truncate">
+              {image.name}
+            </div>
+            <!-- File size indicator -->
+            <div class="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
+              {(image.size / 1024).toFixed(0)}KB
+            </div>
+          </div>
+        {/each}
+      </div>
+      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        {#if supportsVision}
+          <span class="text-green-600 dark:text-green-400 font-medium">✓ Vision model:</span> Images will be directly analyzed by the AI
+        {:else}
+          <span class="text-amber-600 dark:text-amber-400">⚠ Text-only model:</span> Images will be described to the AI for analysis
+        {/if}
+      </div>
+    </div>
+  {/if}
   <form on:submit={handleSubmit} class="flex items-end space-x-2 sm:space-x-4">
     <!-- Attachment buttons (hidden on mobile) -->
     <div class="hidden sm:flex space-x-2 pb-2">
       <button
         type="button"
+        on:click={handleImageSelect}
         class="p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
         title="Attach image"
         aria-label="Attach image"
@@ -140,6 +257,19 @@
     
     <!-- Message input -->
     <div class="flex-1 relative">
+      <!-- Mobile attachment button -->
+      <button
+        type="button"
+        on:click={handleImageSelect}
+        class="absolute left-2 top-1/2 transform -translate-y-1/2 sm:hidden p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+        title="Attach image"
+        aria-label="Attach image"
+      >
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+        </svg>
+      </button>
+      
       <textarea
         id="message-input"
         bind:this={textarea}
@@ -148,7 +278,7 @@
         on:input={adjustTextareaHeight}
         placeholder="Ask anything..."
         disabled={$isLoading}
-        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed sm:pl-4 pl-10"
         rows="1"
         maxlength="2000"
       ></textarea>
@@ -170,8 +300,8 @@
           disabled={$isLoading}
           title="Select AI Model"
         >
-          {#if $selectedModel}
-            <span class="text-sm font-medium max-w-16 sm:max-w-none truncate">{$selectedModel}</span>
+  {#if $selectedModel}
+            <span class="text-sm font-medium max-w-24 sm:max-w-none truncate" title={$selectedModel}>{$selectedModel}</span>
           {:else}
             <span class="text-sm text-gray-500">Model</span>
           {/if}
@@ -181,7 +311,7 @@
         </button>
         
         {#if showModelDropdown}
-          <div class="absolute bottom-full mb-2 right-0 w-72 sm:w-80 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-10">
+          <div class="absolute bottom-full mb-2 right-0 w-80 sm:w-96 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-10">
             <!-- Search Header -->
             <div class="p-3 border-b border-gray-300 dark:border-gray-600">
               <div class="flex items-center space-x-2">
@@ -229,11 +359,16 @@
                       }"
                   >
                     <div class="flex-1 min-w-0">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white truncate flex items-center gap-2">
-                        {model.model_id}
-                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                      <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
+                        <span class="break-words">{model.model_id}</span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 flex-shrink-0">
                           {model.client_type}
                         </span>
+                        {#if model.model_id.toLowerCase().includes('gemma3') || model.model_id.toLowerCase().includes('llava') || model.model_id.toLowerCase().includes('scout') || model.model_id.toLowerCase().includes('maverick') || model.model_id.toLowerCase().includes('vision') || model.model_id.toLowerCase().includes('llama-3.2-11b-vision-preview') || model.model_id.toLowerCase().includes('llama-3.2-90b-vision-preview')}
+                          <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 flex-shrink-0">
+                            👁️ Vision
+                          </span>
+                        {/if}
                       </div>
                       <div class="text-xs text-gray-500 dark:text-gray-400">
                         {model.owned_by} • Max: {model.context_window.toLocaleString()}
@@ -255,7 +390,7 @@
       <!-- Send button -->
       <button
         type="submit"
-        disabled={!message.trim() || $isLoading || !$selectedModel}
+        disabled={(!message.trim() && selectedImages.length === 0) || $isLoading || !$selectedModel}
         class="p-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl transition-colors disabled:cursor-not-allowed"
         title="Send message"
       >

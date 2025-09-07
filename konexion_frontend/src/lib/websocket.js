@@ -4,23 +4,25 @@ import {
   isConnected, 
   isLoading, 
   selectedModel,
-  isTyping 
+  isTyping,
+  maxTokens
 } from '$lib/stores.js';
 import { get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { perfMonitor } from '$lib/performance.js';
+import { config, getWebSocketUrl } from '$lib/config.js';
 
 let currentBotMessage = null;
 let chunkBuffer = '';
 let bufferTimeout = null;
-const BUFFER_FLUSH_INTERVAL = 16; // 60fps (16ms)
-const MIN_CHUNK_SIZE = 10; // Minimum characters before flushing
+const BUFFER_FLUSH_INTERVAL = config.performance.bufferFlushInterval;
+const MIN_CHUNK_SIZE = config.performance.minChunkSize;
 
 export class WebSocketService {
   constructor() {
     this.ws = null;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.maxReconnectAttempts = config.websocket.maxReconnectAttempts;
   }
 
   connect() {
@@ -28,9 +30,7 @@ export class WebSocketService {
     
     try {
       // Use the backend WebSocket endpoint
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = import.meta.env.DEV ? 'localhost:8000' : window.location.host;
-      this.ws = new WebSocket(`${protocol}//${wsHost}/ws/chat`);
+      this.ws = new WebSocket(getWebSocketUrl());
       
       wsConnection.set(this.ws);
 
@@ -218,7 +218,7 @@ export class WebSocketService {
     isLoading.set(false);
   }
 
-  sendMessage(message, model) {
+  sendMessage(message, model, images = [], tokens = null) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       // Clean up the message content before sending
       let cleanMessage = message;
@@ -227,17 +227,36 @@ export class WebSocketService {
       }
       cleanMessage = cleanMessage.replace(/\[object Object\]/g, '').trim();
       
-      // Add user message to chat
-      this.addMessage(cleanMessage, 'user');
+      // Prepare image data
+      const imageData = images.map(img => ({
+        name: img.name,
+        type: img.type,
+        size: img.size,
+        data: img.dataUrl
+      }));
+      
+      // Add user message to chat (with images)
+      this.addMessage(cleanMessage, 'user', false, images);
       
       // Show loading state
       isLoading.set(true);
       isTyping.set(true);
       
+      // Get current max tokens value if not provided
+      let currentMaxTokens = tokens;
+      if (currentMaxTokens === null) {
+        const unsubscribe = maxTokens.subscribe(value => {
+          currentMaxTokens = value;
+        });
+        unsubscribe();
+      }
+      
       // Send to backend
       this.ws.send(JSON.stringify({
         message: cleanMessage,
-        model: model
+        model: model,
+        images: imageData,
+        max_tokens: currentMaxTokens
       }));
     } else {
       console.error('WebSocket is not connected');
@@ -245,7 +264,7 @@ export class WebSocketService {
     }
   }
 
-  addMessage(content, sender, isError = false) {
+  addMessage(content, sender, isError = false, images = []) {
     // Clean up content properly without removing valid content
     let cleanContent = content;
     
@@ -288,7 +307,8 @@ export class WebSocketService {
       sender: sender,
       timestamp: new Date(),
       isComplete: true,
-      isError: isError
+      isError: isError,
+      images: images || []
     };
     
     messages.update(msgs => [...msgs, newMessage]);

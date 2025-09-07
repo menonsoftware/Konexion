@@ -86,7 +86,10 @@ def generate_ollama_response(model_name, prompt, stream=False):
     payload = {
         "model": model_name,
         "prompt": prompt,
-        "stream": stream
+        "stream": stream,
+        "options": {
+            "num_predict": ollama_config.max_tokens
+        }
     }
     
     try:
@@ -104,23 +107,30 @@ def generate_ollama_response(model_name, prompt, stream=False):
         return {"error": str(e)}
 
 
-def stream_ollama_chat(model_name, messages):
+def stream_ollama_chat(model_name, messages, max_tokens=None):
     """
     Stream chat response from Ollama model.
     
     Args:
         model_name (str): Name of the Ollama model
         messages (list): List of message objects with role and content
+        max_tokens (int, optional): Maximum number of tokens to generate
     
     Yields:
         Generator of response chunks
     """
     client_config = get_ollama_client()
     
+    # Use provided max_tokens or fall back to config default
+    tokens_limit = max_tokens if max_tokens is not None else ollama_config.max_tokens
+    
     payload = {
         "model": model_name,
         "messages": messages,
-        "stream": True
+        "stream": True,
+        "options": {
+            "num_predict": tokens_limit
+        }
     }
     
     try:

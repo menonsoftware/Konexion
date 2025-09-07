@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
+import { config } from './config.js';
 
 // WebSocket connection store
 export const wsConnection = writable(null);
@@ -42,6 +43,35 @@ export const availableModels = writable([]);
 
 // Selected AI model store
 export const selectedModel = writable('');
+
+// Max tokens configuration store with persistence
+function createMaxTokensStore() {
+  const { subscribe, set, update } = writable(config.ai.defaultMaxTokens);
+
+  return {
+    subscribe,
+    set: (value) => {
+      if (browser) {
+        localStorage.setItem('maxTokens', value.toString());
+      }
+      set(value);
+    },
+    update,
+    init: () => {
+      if (browser) {
+        const stored = localStorage.getItem('maxTokens');
+        if (stored) {
+          const parsedValue = parseInt(stored);
+          if (!isNaN(parsedValue) && parsedValue > 0) {
+            set(parsedValue);
+          }
+        }
+      }
+    }
+  };
+}
+
+export const maxTokens = createMaxTokensStore();
 
 // Connection status store
 export const isConnected = writable(false);

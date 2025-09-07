@@ -27,11 +27,26 @@ The Konexion Frontend is a SvelteKit-based web application that provides an intu
 - **Syntax Highlighting**: Highlight.js
 - **Markdown Rendering**: Marked
 
+
 ## Prerequisites
 
 - **Node.js**: 18.0 or higher
 - **Package Manager**: npm, pnpm, or yarn
 - **Backend**: Konexion Backend running on port 8000
+
+## Environment Setup
+
+Before running the application, set up your environment variables:
+
+1. **Copy the example environment file**:
+   ```bash
+   cp example.env .env
+   ```
+
+2. **Configure your environment variables** in `.env`:
+   - `VITE_API_BASE_URL`: Backend API URL
+   - `VITE_WS_HOST`: WebSocket host for real-time communication
+   - See `ENV_VARIABLES.md` for complete documentation
 
 ## Installation
 

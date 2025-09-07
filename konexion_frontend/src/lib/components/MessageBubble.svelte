@@ -244,7 +244,36 @@
         {message.isError ? 'border-red-500 bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-200' : ''}
       ">
         {#if message.sender === 'user'}
-          <p class="text-sm whitespace-pre-wrap">{message.content}</p>
+          <!-- User message content -->
+          {#if message.images && message.images.length > 0}
+            <div class="mb-2">
+              <div class="flex flex-wrap gap-2">
+                {#each message.images as image}
+                  <div class="relative group">
+                    <button
+                      type="button"
+                      on:click={() => window.open(image.dataUrl, '_blank')}
+                      class="block rounded-lg overflow-hidden border border-white/20 hover:border-white/40 transition-colors"
+                      aria-label="Open {image.name} in full size"
+                    >
+                      <img
+                        src={image.dataUrl}
+                        alt={image.name}
+                        class="max-w-48 max-h-48 object-cover"
+                      />
+                    </button>
+                    <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 rounded-b-lg truncate pointer-events-none">
+                      {image.name}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {/if}
+          
+          {#if message.content.trim()}
+            <p class="text-sm whitespace-pre-wrap">{message.content}</p>
+          {/if}
         {:else}
           {#if message.isComplete}
             <div class="message-content">

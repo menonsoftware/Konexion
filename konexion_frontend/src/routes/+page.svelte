@@ -8,18 +8,24 @@
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorMessage from '$lib/components/ErrorMessage.svelte';
   import KeyboardShortcuts from '$lib/components/KeyboardShortcuts.svelte';
+  import Sidebar from '$lib/components/Sidebar.svelte';
   import { wsService } from '$lib/websocket.js';
   import { fetchAvailableModels } from '$lib/api.js';
-  import { availableModels, selectedModel, isConnected, isDarkMode } from '$lib/stores.js';
+  import { availableModels, selectedModel, isConnected, isDarkMode, maxTokens } from '$lib/stores.js';
 
   let isInitialized = false;
   let initError = null;
   let showShortcuts = false;
+  let showSidebar = false;
 
   async function initialize() {
     try {
       initError = null;
       isInitialized = false;
+      
+      // Initialize stores
+      isDarkMode.init();
+      maxTokens.init();
       
       // Fetch available models
       const models = await fetchAvailableModels();
@@ -51,10 +57,23 @@
       if (messageInput) messageInput.focus();
     }
     
+    // Ctrl/Cmd + Shift + I to trigger image attachment
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'I') {
+      event.preventDefault();
+      const imageInput = document.querySelector('input[type="file"][accept="image/*"]');
+      if (imageInput) imageInput.click();
+    }
+    
     // Ctrl/Cmd + Shift + D to toggle dark mode
     if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'D') {
       event.preventDefault();
       isDarkMode.toggle();
+    }
+    
+    // Ctrl/Cmd + , to toggle settings sidebar
+    if ((event.ctrlKey || event.metaKey) && event.key === ',') {
+      event.preventDefault();
+      showSidebar = !showSidebar;
     }
     
     // ? to show keyboard shortcuts
@@ -108,6 +127,12 @@
   </main>
 
   <ConnectionStatus />
+  
+  <!-- Settings Sidebar -->
+  <Sidebar 
+    isOpen={showSidebar} 
+    onToggle={() => showSidebar = !showSidebar} 
+  />
 </div>
 
 <KeyboardShortcuts bind:show={showShortcuts} />

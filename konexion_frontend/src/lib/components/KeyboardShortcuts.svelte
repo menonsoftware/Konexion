@@ -62,8 +62,18 @@
         </div>
         
         <div class="flex items-center justify-between">
+          <span class="text-gray-700 dark:text-gray-300">Attach image</span>
+          <kbd class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded">Ctrl+Shift+I</kbd>
+        </div>
+        
+        <div class="flex items-center justify-between">
           <span class="text-gray-700 dark:text-gray-300">Toggle dark mode</span>
           <kbd class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded">Ctrl+Shift+D</kbd>
+        </div>
+        
+        <div class="flex items-center justify-between">
+          <span class="text-gray-700 dark:text-gray-300">Toggle settings</span>
+          <kbd class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded">Ctrl+,</kbd>
         </div>
         
         <div class="flex items-center justify-between">
