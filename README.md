@@ -165,7 +165,7 @@ source .venv/bin/activate
 uv run main.py
 
 # Run tests (if available)
-uv run pytest
+# uv run pytest
 ```
 
 ### Frontend Development
@@ -244,6 +244,7 @@ Ensure all required environment variables are set in production:
 
 ## Roadmap
 
+- [ ] Image and attachment support
 - [ ] User authentication and sessions
 - [ ] Chat history persistence
 - [ ] Multi-user support
