@@ -32,6 +32,10 @@ function createMessagesStore() {
     // Method to add a new message efficiently
     addMessage: (message) => {
       update(msgs => [...msgs, message]);
+    },
+    // Method to clear all messages
+    clear: () => {
+      set([]);
     }
   };
 }

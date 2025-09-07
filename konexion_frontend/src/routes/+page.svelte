@@ -70,6 +70,13 @@
       isDarkMode.toggle();
     }
     
+    // Ctrl/Cmd + Shift + Delete to clear chat
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Delete') {
+      event.preventDefault();
+      // Trigger clear chat by dispatching a custom event
+      window.dispatchEvent(new CustomEvent('clearChatShortcut'));
+    }
+    
     // Ctrl/Cmd + , to toggle settings sidebar
     if ((event.ctrlKey || event.metaKey) && event.key === ',') {
       event.preventDefault();

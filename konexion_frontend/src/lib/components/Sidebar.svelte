@@ -1,6 +1,7 @@
 <script>
   import { maxTokens } from '$lib/stores.js';
   import MaxTokensSelector from './MaxTokensSelector.svelte';
+  import ClearChatButton from './ClearChatButton.svelte';
   
   let { isOpen = false, onToggle } = $props();
   
@@ -66,6 +67,14 @@
     <!-- Sidebar Content -->
     <div class="flex-1 p-4 overflow-y-auto">
       <div class="space-y-6">
+        <!-- Chat Management Section -->
+        <div>
+          <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Chat Management</h4>
+          <div class="space-y-3">
+            <ClearChatButton />
+          </div>
+        </div>
+        
         <!-- AI Settings Section -->
         <div>
           <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">AI Configuration</h4>
