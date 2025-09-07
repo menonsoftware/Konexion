@@ -113,28 +113,29 @@ pnpm dev
 
 ```
 source/
-├── konexion_backend/          # FastAPI backend application
+├── konexion_backend/         # FastAPI backend application
 │   ├── main.py               # Application entry point
+|   ├── vision.py             # Complete vision processing module
 │   ├── config.py             # Configuration management
 │   ├── pyproject.toml        # Python dependencies
 │   ├── ai_models/            # AI provider implementations
-│   │   ├── groq.py          # Groq integration
-│   │   └── ollama.py        # Ollama integration
-│   └── models/              # Data models and schemas
+│   │   ├── groq.py           # Groq integration
+│   │   └── ollama.py         # Ollama integration
+│   └── models/               # Data models and schemas
 │
-├── konexion_frontend/         # SvelteKit frontend application
+├── konexion_frontend/        # SvelteKit frontend application
 │   ├── src/
-│   │   ├── routes/          # SvelteKit routes
-│   │   ├── lib/             # Shared components and utilities
-│   │   │   ├── components/  # Svelte components
-│   │   │   ├── api.js       # API client
-│   │   │   ├── websocket.js # WebSocket management
-│   │   │   └── stores.js    # Svelte stores
-│   │   └── app.html         # HTML template
-│   ├── package.json         # Node.js dependencies
-│   └── vite.config.js       # Vite configuration
+│   │   ├── routes/           # SvelteKit routes
+│   │   ├── lib/              # Shared components and utilities
+│   │   │   ├── components/   # Svelte components
+│   │   │   ├── api.js        # API client
+│   │   │   ├── websocket.js  # WebSocket management
+│   │   │   └── stores.js     # Svelte stores
+│   │   └── app.html          # HTML template
+│   ├── package.json          # Node.js dependencies
+│   └── vite.config.js        # Vite configuration
 │
-└── README.md                # This file
+└── README.md                 # This file
 ```
 
 ## Configuration

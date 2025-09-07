@@ -1,6 +1,8 @@
 import logging
 from groq import Groq
 import requests
+import asyncio
+import time
 from models.ai import AIModel
 from config import get_groq_config
 
@@ -65,3 +67,70 @@ def get_groq_models():
     except Exception as e:
         logger.error(f"Unexpected error fetching Groq models: {e}", exc_info=True)
         return {"models": []}
+
+
+async def stream_groq_chat(websocket, model_name, messages, max_tokens=None):
+    """
+    Stream chat response from Groq model with WebSocket integration.
+    
+    Args:
+        websocket: WebSocket connection to send chunks
+        model_name (str): Name of the Groq model
+        messages (list): List of message objects with role and content
+        max_tokens (int, optional): Maximum number of tokens to generate
+    """
+    try:
+        logger.info(f"Using Groq client for model: {model_name}")
+        
+        # Prepare chat completion parameters
+        completion_params = {
+            "model": str(model_name),
+            "messages": messages,
+            "stop": None,
+            "stream": True,
+        }
+        
+        # Add max_tokens if provided
+        if max_tokens is not None:
+            completion_params["max_tokens"] = max_tokens
+            logger.debug(f"Using custom max_tokens: {max_tokens}")
+        
+        stream = get_groq_client().chat.completions.create(**completion_params)
+        
+        # Batch chunks for better network efficiency
+        chunk_buffer = ""
+        last_send_time = time.time()
+        BATCH_SIZE = 20  # Characters to batch
+        BATCH_TIMEOUT = 0.05  # 50ms max delay
+        
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                content = chunk.choices[0].delta.content
+                chunk_buffer += content
+                
+                current_time = time.time()
+                should_send = (
+                    len(chunk_buffer) >= BATCH_SIZE or
+                    current_time - last_send_time >= BATCH_TIMEOUT or
+                    not content.strip()  # Send immediately for whitespace/punctuation
+                )
+                
+                if should_send:
+                    logger.debug(f"Sending batched chunk of {len(chunk_buffer)} characters")
+                    await websocket.send_json({"chunk": chunk_buffer})
+                    chunk_buffer = ""
+                    last_send_time = current_time
+                    await asyncio.sleep(0.001)  # Small delay to prevent overwhelming frontend
+        
+        # Send any remaining content
+        if chunk_buffer:
+            logger.debug(f"Sending final chunk of {len(chunk_buffer)} characters")
+            await websocket.send_json({"chunk": chunk_buffer})
+        
+        await websocket.send_json({"finish_reason": "completed"})
+        logger.info(f"Completed Groq chat response for model: {model_name}")
+        
+    except Exception as e:
+        logger.error(f"Error streaming from Groq: {e}", exc_info=True)
+        await websocket.send_json({"error": f"Error: {str(e)}"})
+        await websocket.send_json({"finish_reason": "error"})

@@ -5,6 +5,7 @@ This document describes all environment variables used in the Konexion frontend 
 ## Setup
 
 1. Copy the example environment file:
+
    ```bash
    cp example.env .env
    ```
@@ -16,12 +17,14 @@ This document describes all environment variables used in the Konexion frontend 
 ### Required Variables
 
 #### `VITE_API_BASE_URL`
+
 - **Description**: Base URL for the backend API server
 - **Default**: `http://localhost:8000/api`
 - **Example**: `https://api.konexion.com/api`
 - **Used in**: API calls for fetching models and health checks
 
 #### `VITE_WS_HOST`
+
 - **Description**: WebSocket host and port for real-time communication
 - **Default**: `localhost:8000`
 - **Example**: `wss://api.konexion.com`
@@ -30,24 +33,28 @@ This document describes all environment variables used in the Konexion frontend 
 ### Optional Variables
 
 #### `VITE_API_PROXY_PATH`
+
 - **Description**: API proxy path used by Vite dev server
 - **Default**: `/api`
 - **Example**: `/backend-api`
 - **Used in**: Development proxy configuration
 
 #### `VITE_WS_PATH`
+
 - **Description**: WebSocket endpoint path
 - **Default**: `/ws/chat`
 - **Example**: `/websocket/chat`
 - **Used in**: WebSocket URL construction
 
 #### `VITE_DEV_MODE`
+
 - **Description**: Enable development mode features
 - **Default**: `true`
 - **Example**: `false`
 - **Used in**: Development-specific configurations
 
 #### `VITE_DEFAULT_MODELS`
+
 - **Description**: Fallback models when API fails (JSON string)
 - **Default**: See example.env for full JSON
 - **Example**: `'[{"model_id":"custom-model","context_window":4096}]'`
@@ -56,18 +63,21 @@ This document describes all environment variables used in the Konexion frontend 
 ### Performance Variables
 
 #### `VITE_BUFFER_FLUSH_INTERVAL`
+
 - **Description**: Buffer flush interval in milliseconds for streaming
 - **Default**: `16` (60fps)
 - **Example**: `33` (30fps)
 - **Used in**: WebSocket message buffering
 
 #### `VITE_MIN_CHUNK_SIZE`
+
 - **Description**: Minimum chunk size before flushing buffer
 - **Default**: `10`
 - **Example**: `20`
 - **Used in**: WebSocket message buffering optimization
 
 #### `VITE_MAX_RECONNECT_ATTEMPTS`
+
 - **Description**: Maximum WebSocket reconnection attempts
 - **Default**: `5`
 - **Example**: `10`
@@ -76,6 +86,7 @@ This document describes all environment variables used in the Konexion frontend 
 ### AI Model Configuration
 
 #### `VITE_DEFAULT_MAX_TOKENS`
+
 - **Description**: Default maximum tokens for AI responses
 - **Default**: `2048`
 - **Example**: `4096`
@@ -93,11 +104,13 @@ The application uses a centralized configuration system in `src/lib/config.js`. 
 ## Development vs Production
 
 ### Development Mode
+
 - Uses proxy configuration for API calls (`/api` → backend server)
 - WebSocket connects to `localhost:8000` by default
 - Additional debugging and development features enabled
 
 ### Production Mode
+
 - Direct API calls to `VITE_API_BASE_URL`
 - WebSocket connects to the current host or specified `VITE_WS_HOST`
 - Optimized for performance
@@ -105,11 +118,13 @@ The application uses a centralized configuration system in `src/lib/config.js`. 
 ## Validation
 
 The application includes configuration validation that will:
+
 - Check for required environment variables
 - Log warnings for missing optional variables
 - Provide fallback values where appropriate
 
 To manually validate configuration:
+
 ```javascript
 import { validateConfig } from '$lib/config.js';
 const isValid = validateConfig();

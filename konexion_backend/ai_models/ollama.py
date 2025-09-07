@@ -1,14 +1,20 @@
 import logging
 import requests
 import json
+import asyncio
+import time
 from models.ai import AIModel
 from config import get_ollama_config
+from vision import VisionProcessor
 
 # Setup logging
 logger = logging.getLogger(__name__)
 
 # Get configuration
 ollama_config = get_ollama_config()
+
+# Initialize vision processor
+vision_processor = VisionProcessor()
 
 def get_ollama_models():
     """
@@ -124,29 +130,39 @@ def stream_ollama_chat(model_name, messages, max_tokens=None):
     # Use provided max_tokens or fall back to config default
     tokens_limit = max_tokens if max_tokens is not None else ollama_config.max_tokens
     
-    # Process messages to handle vision content for Ollama format
+    # Process messages to handle vision content using vision module
     processed_messages = []
     images_list = []
     
     for message in messages:
         if isinstance(message.get('content'), list):
-            # Handle vision content (list of content items)
+            # Handle vision content using vision processor
+            # Extract text and images from the complex content structure
             text_content = ""
+            temp_images = []
+            
             for content_item in message['content']:
                 if content_item.get('type') == 'text':
                     text_content += content_item.get('text', '')
                 elif content_item.get('type') == 'image_url':
-                    # Extract base64 image data for Ollama
+                    # Convert to simple image format for vision processor
                     image_url = content_item.get('image_url', {}).get('url', '')
-                    if ',' in image_url:
-                        # Remove data URL prefix (data:image/jpeg;base64,)
-                        base64_data = image_url.split(',')[1]
-                        images_list.append(base64_data)
+                    if image_url:
+                        temp_images.append({"data": image_url})
             
-            processed_messages.append({
-                "role": message["role"],
-                "content": text_content.strip() or "What's in this image?"
-            })
+            # Use vision processor to handle Ollama format conversion
+            if temp_images:
+                ollama_text, ollama_images = vision_processor.prepare_ollama_vision_data(text_content, temp_images)
+                images_list.extend(ollama_images)
+                processed_messages.append({
+                    "role": message["role"],
+                    "content": ollama_text
+                })
+            else:
+                processed_messages.append({
+                    "role": message["role"],
+                    "content": text_content.strip() or "What's in this image?"
+                })
         else:
             # Regular text message
             processed_messages.append(message)
@@ -206,3 +222,53 @@ def stream_ollama_chat(model_name, messages, max_tokens=None):
     except requests.exceptions.RequestException as e:
         logger.error(f"Error streaming from Ollama: {e}")
         yield f"Error: {str(e)}"
+
+
+async def stream_ollama_chat_websocket(websocket, model_name, messages, max_tokens=None):
+    """
+    Stream chat response from Ollama model with WebSocket integration.
+    
+    Args:
+        websocket: WebSocket connection to send chunks
+        model_name (str): Name of the Ollama model
+        messages (list): List of message objects with role and content
+        max_tokens (int, optional): Maximum number of tokens to generate
+    """
+    try:
+        logger.info(f"Using Ollama client for model: {model_name}")
+        
+        chunk_buffer = ""
+        last_send_time = time.time()
+        BATCH_SIZE = 20  # Characters to batch
+        BATCH_TIMEOUT = 0.05  # 50ms max delay
+        
+        for chunk in stream_ollama_chat(model_name, messages, max_tokens):
+            if chunk:  # Only process non-empty chunks
+                chunk_buffer += chunk
+                
+                current_time = time.time()
+                should_send = (
+                    len(chunk_buffer) >= BATCH_SIZE or
+                    current_time - last_send_time >= BATCH_TIMEOUT or
+                    not chunk.strip()  # Send immediately for whitespace/punctuation
+                )
+                
+                if should_send:
+                    logger.debug(f"Sending Ollama batched chunk of {len(chunk_buffer)} characters")
+                    await websocket.send_json({"chunk": chunk_buffer})
+                    chunk_buffer = ""
+                    last_send_time = current_time
+                    await asyncio.sleep(0.001)  # Small delay to prevent overwhelming frontend
+        
+        # Send any remaining content
+        if chunk_buffer:
+            logger.debug(f"Sending final Ollama chunk of {len(chunk_buffer)} characters")
+            await websocket.send_json({"chunk": chunk_buffer})
+            
+        await websocket.send_json({"finish_reason": "completed"})
+        logger.info(f"Completed Ollama chat response for model: {model_name}")
+        
+    except Exception as e:
+        logger.error(f"Error streaming from Ollama: {e}", exc_info=True)
+        await websocket.send_json({"error": f"Error: {str(e)}"})
+        await websocket.send_json({"finish_reason": "error"})

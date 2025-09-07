@@ -16,6 +16,7 @@ The Konexion Frontend is a SvelteKit-based web application that provides an intu
 - 🔄 **Hot Module Replacement**: Fast development with Vite
 - 📱 **Mobile-Friendly**: Responsive design for all devices
 - 🎯 **Type-Safe**: ESLint and Prettier for code quality
+- 🔄 **Model Refresh**: Real-time AI model cache refresh capability
 
 ## Tech Stack
 
@@ -26,7 +27,6 @@ The Konexion Frontend is a SvelteKit-based web application that provides an intu
 - **Code Quality**: ESLint + Prettier
 - **Syntax Highlighting**: Highlight.js
 - **Markdown Rendering**: Marked
-
 
 ## Prerequisites
 
@@ -39,6 +39,7 @@ The Konexion Frontend is a SvelteKit-based web application that provides an intu
 Before running the application, set up your environment variables:
 
 1. **Copy the example environment file**:
+
    ```bash
    cp example.env .env
    ```
@@ -153,6 +154,7 @@ npm run format
 ### Code Formatting
 
 The project uses Prettier for code formatting with the following plugins:
+
 - `prettier-plugin-svelte`: Svelte component formatting
 - `prettier-plugin-tailwindcss`: Tailwind class sorting
 
@@ -174,6 +176,8 @@ src/
 │   │   ├── Header.svelte
 │   │   ├── KeyboardShortcuts.svelte
 │   │   ├── LoadingSpinner.svelte
+│   │   ├── RefreshModelsButton.svelte
+│   │   ├── Sidebar.svelte
 │   │   └── ModelSelector.svelte
 │   ├── assets/          # Static assets
 │   ├── api.js           # API client functions
@@ -198,10 +202,13 @@ src/
 The frontend communicates with the backend through:
 
 ### REST API
-- **GET /models**: Fetch available AI models
-- **WebSocket /chat**: Real-time chat communication
+
+- **GET /api/models**: Fetch available AI models
+- **POST /api/models/refresh**: Refresh AI model cache
+- **WebSocket /api/chat**: Real-time chat communication
 
 ### WebSocket Events
+
 - `message`: Send chat messages
 - `model_change`: Switch AI models
 - `error`: Handle error responses
@@ -216,6 +223,7 @@ The frontend communicates with the backend through:
 - **ModelSelector**: AI model selection dropdown
 - **ConnectionStatus**: Backend connection indicator
 - **CodeBlock**: Syntax-highlighted code rendering
+- **RefreshModelsButton**: AI model cache refresh with real-time feedback
 
 ### Utility Components
 
@@ -229,6 +237,7 @@ The frontend communicates with the backend through:
 - **Ctrl/Cmd + L**: Clear chat
 - **Ctrl/Cmd + D**: Toggle dark mode
 - **Ctrl/Cmd + K**: Focus model selector
+- **Ctrl/Cmd + R**: Refresh AI models
 - **Ctrl/Cmd + ?**: Show shortcuts help
 
 ## Styling
@@ -236,6 +245,7 @@ The frontend communicates with the backend through:
 ### Tailwind CSS 4
 
 The project uses Tailwind CSS 4 with the following features:
+
 - **CSS-first configuration**: Modern @config directive
 - **Container queries**: Responsive design utilities
 - **Form styling**: Enhanced form components
@@ -244,6 +254,7 @@ The project uses Tailwind CSS 4 with the following features:
 ### Custom Styles
 
 Global styles are defined in `src/app.css` and include:
+
 - CSS custom properties for theming
 - Base component styles
 - Responsive typography scales
@@ -262,6 +273,7 @@ npm run build
 ### Deployment Platforms
 
 The application can be deployed to:
+
 - **Vercel**: Automatic SvelteKit support
 - **Netlify**: Static site hosting
 - **GitHub Pages**: Static hosting
@@ -270,6 +282,7 @@ The application can be deployed to:
 ### Environment Variables
 
 For production deployment, you may need to set:
+
 - `VITE_API_URL`: Backend API URL (if different from proxy)
 - `VITE_WS_URL`: WebSocket URL (if different from proxy)
 
@@ -329,6 +342,7 @@ For production deployment, you may need to set:
 ### Performance Monitoring
 
 The application includes performance utilities in `lib/performance.js` for monitoring:
+
 - WebSocket connection latency
 - Message rendering times
 - Component load times

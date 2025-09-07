@@ -5,11 +5,11 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
 			// Prevent FOUC - Set theme before page renders
-			(function() {
+			(function () {
 				const stored = localStorage.getItem('theme');
 				const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 				const shouldUseDark = stored === 'dark' || (stored === null && prefersDark);
-				
+
 				if (shouldUseDark) {
 					document.documentElement.classList.add('dark');
 				}

@@ -1,15 +1,16 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-import requests
 import uvicorn
-import re
 import asyncio
-import time
 import logging
+from contextlib import asynccontextmanager
+from typing import Dict, List, Any, Optional
 from starlette.websockets import WebSocketDisconnect
-from ai_models.groq import get_groq_client, get_groq_models
-from ai_models.ollama import get_ollama_models, stream_ollama_chat
-from config import get_security_config, get_server_config, get_logging_config, get_vision_config
+from ai_models.groq import stream_groq_chat
+from ai_models.ollama import stream_ollama_chat_websocket
+from config import get_security_config, get_server_config, get_logging_config
+from vision import process_vision_request, prepare_vision_message
+from model_registry import model_registry
 
 # Setup logging
 logging_config = get_logging_config()
@@ -21,7 +22,39 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifespan manager for startup and shutdown events.
+    
+    This replaces the deprecated @app.on_event decorators with the modern
+    lifespan context manager pattern.
+    """
+    # Startup
+    logger.info("Starting Konexion AI Backend")
+    logger.info("Pre-loading model registry...")
+    try:
+        # Pre-load models to cache them
+        counts = await model_registry.preload_models()
+        logger.info(f"Successfully pre-loaded {counts['total']} models "
+                   f"({counts['groq']} Groq, {counts['ollama']} Ollama)")
+    except Exception as e:
+        logger.warning(f"Failed to pre-load models: {e}")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Konexion AI Backend")
+    model_registry.refresh_cache()  # Clear cache
+
+
+app = FastAPI(
+    title="Konexion AI Backend",
+    description="AI model inference backend with multi-provider support",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # Add CORS middleware using configuration
 security_config = get_security_config()
@@ -41,257 +74,215 @@ logger.info(f"CORS origins: {security_config.cors_origins_list}")
 
 @app.get("/api/models")
 async def get_models():
-    """API endpoint to get available models for the frontend"""
+    """API endpoint to get available models for the frontend."""
     try:
         logger.info("Fetching available models from Groq and Ollama")
-        # Fetch models from both Groq and Ollama
-        groq_models = get_groq_models()
-        ollama_models = get_ollama_models()
-        total_models = len(groq_models["models"]) + len(ollama_models["models"])
-        logger.info(f"Successfully fetched {total_models} models ({len(groq_models['models'])} from Groq, {len(ollama_models['models'])} from Ollama)")
-        return {
-            "models": groq_models["models"] + ollama_models["models"]
-        }
+        all_models = model_registry.get_all_models()
+        
+        groq_count = len([m for m in all_models if m.client_type == "groq"])
+        ollama_count = len([m for m in all_models if m.client_type == "ollama"])
+        
+        logger.info(f"Successfully fetched {len(all_models)} models "
+                   f"({groq_count} from Groq, {ollama_count} from Ollama)")
+        
+        return {"models": all_models}
     except Exception as e:
         logger.error(f"Error fetching models: {e}", exc_info=True)
-        return {"models": []}
+        return {"models": [], "error": "Failed to fetch models"}
 
 
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint for frontend connectivity testing"""
+    """Health check endpoint for frontend connectivity testing."""
     logger.debug("Health check endpoint accessed")
     return {
         "status": "healthy",
-        "message": "WebKonexion backend is running",
+        "message": "Konexion backend is running",
         "cors_enabled": True
     }
 
 
+def validate_chat_input(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+    """
+    Validate incoming chat WebSocket data.
+    
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    user_message = data.get("message")
+    selected_model = data.get("model")
+    
+    if not user_message:
+        return False, "Message is required"
+    
+    if not selected_model:
+        return False, "Model selection is required"
+    
+    return True, None
+
+
+def normalize_user_message(user_message: Any) -> str:
+    """
+    Normalize user message to string format.
+    
+    Args:
+        user_message: Message in various formats (string, dict, etc.)
+        
+    Returns:
+        str: Normalized message string
+    """
+    if isinstance(user_message, dict):
+        # If message is an object, try to extract content or convert properly
+        message_str = user_message.get("content", str(user_message))
+        logger.debug("Converted dict message to string")
+    elif isinstance(user_message, str):
+        message_str = user_message
+    else:
+        # For any other type, convert to string safely
+        message_str = str(user_message)
+        logger.debug(f"Converted {type(user_message)} message to string")
+    
+    return message_str
+
+
+def prepare_base_messages() -> List[Dict[str, str]]:
+    """Prepare base system message for AI models."""
+    return [
+        {
+            "role": "system", 
+            "content": "You are a helpful assistant."
+        }
+    ]
+
+
+async def send_error_response(websocket: WebSocket, error_message: str, 
+                            finish_reason: str = "error") -> None:
+    """Send standardized error response via WebSocket."""
+    try:
+        await websocket.send_json({"error": error_message})
+        await websocket.send_json({"finish_reason": finish_reason})
+    except Exception as e:
+        logger.error(f"Failed to send error response: {e}")
+
+
+async def route_model_request(websocket: WebSocket, selected_model: str, 
+                            messages: List[Dict[str, Any]], max_tokens: Optional[int]) -> None:
+    """
+    Route the request to the appropriate AI provider based on model type.
+    
+    Args:
+        websocket: WebSocket connection
+        selected_model: Selected model identifier
+        messages: Prepared messages for the AI model
+        max_tokens: Maximum tokens for generation
+    """
+    try:
+        if model_registry.is_groq_model(selected_model):
+            await stream_groq_chat(websocket, selected_model, messages, max_tokens)
+        elif model_registry.is_ollama_model(selected_model):
+            await stream_ollama_chat_websocket(websocket, selected_model, messages, max_tokens)
+        else:
+            # Model not found in either service
+            error_msg = f"Model '{selected_model}' not found in available models."
+            logger.error(error_msg)
+            await send_error_response(websocket, error_msg)
+            
+    except Exception as e:
+        logger.error(f"Error during model request routing: {e}", exc_info=True)
+        await send_error_response(websocket, f"Error processing request: {str(e)}")
+
+
 @app.websocket("/ws/chat")
 async def chat(websocket: WebSocket):
-    # use websockets for chat functionality
+    """WebSocket endpoint for real-time chat with AI models."""
     await websocket.accept()
     logger.info("WebSocket connection established")
+    
     try:
         while True:
+            # Receive and validate data
             data = await websocket.receive_json()
             logger.debug(f"Received WebSocket data: {data}")
-            logger.debug(f"Message type: {type(data.get('message'))}, Message: {data.get('message')}")
-            user_message = data.get("message")
-            selected_model = data.get("model")
+            
+            # Validate input
+            is_valid, error_message = validate_chat_input(data)
+            if not is_valid:
+                logger.warning(f"Invalid input: {error_message}")
+                await send_error_response(websocket, f"Invalid input: {error_message}")
+                continue
+            
+            # Extract and normalize data
+            user_message_str = normalize_user_message(data["message"])
+            selected_model = data["model"]
             images = data.get("images", [])
-            max_tokens = data.get("max_tokens")  # Get max_tokens from frontend
-
-            if not user_message or not selected_model:
-                logger.warning("Received incomplete data: missing message or model")
-                await websocket.send_json(
-                    {"error": "Please enter a message and select a model."}
-                )
-                continue
-
-            # Ensure user_message is a string and handle potential objects
-            if isinstance(user_message, dict):
-                # If message is an object, try to extract content or convert properly
-                user_message_str = user_message.get("content", str(user_message))
-                logger.debug("Converted dict message to string")
-            elif isinstance(user_message, str):
-                user_message_str = user_message
-            else:
-                # For any other type, convert to string safely
-                user_message_str = str(user_message)
-                logger.debug(f"Converted {type(user_message)} message to string")
-
-            # Prepare messages for both Groq and Ollama
-            messages = [
-                {
-                    "role": "system", 
-                    "content": "You are a helpful assistant."
-                }
-            ]
+            max_tokens = data.get("max_tokens")
             
-            # Check if the selected model supports vision (using configuration)
-            vision_config = get_vision_config()
-            supports_vision = vision_config.supports_vision(selected_model)
+            logger.debug(f"Processing request - Model: {selected_model}, "
+                        f"Message length: {len(user_message_str)}, Images: {len(images)}")
             
-            # Handle message with images based on model capabilities
-            if images and supports_vision:
-                logger.info(f"Processing {len(images)} images for vision-enabled model: {selected_model}")
-                
-                # Prepare user message content for vision models
-                user_content = []
-                
-                # Add text if present
-                if user_message_str.strip():
-                    user_content.append({
-                        "type": "text",
-                        "text": user_message_str
-                    })
-                else:
-                    user_content.append({
-                        "type": "text",
-                        "text": "What's in this image?"
-                    })
-                
-                # Add images using Groq vision schema
-                for image in images:
-                    if image.get("data"):
-                        # Extract base64 data from data URL format: data:image/jpeg;base64,base64_string
-                        if "," in image["data"]:
-                            base64_data = image["data"].split(",")[1]
-                            image_type = image.get("type", "image/jpeg")
-                            
-                            user_content.append({
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{image_type};base64,{base64_data}"
-                                }
-                            })
-                            logger.debug(f"Added image to vision content: {image.get('name', 'Unknown')}")
-                
-                messages.append({
-                    "role": "user",
-                    "content": user_content  # type: ignore
-                })
-                
-            elif images and not supports_vision:
-                logger.warning(f"Model {selected_model} does not support vision. User attempted to send {len(images)} images.")
-                
-                # Send error message for models that don't support vision when images are provided
-                await websocket.send_json({
-                    "error": f"The model '{selected_model}' does not support image analysis. Please select a vision-capable model (like llava, bakllava, moondream) or remove the images to proceed with text-only chat."
-                })
-                await websocket.send_json({"finish_reason": "error"})
+            # Process vision request
+            vision_result = process_vision_request(selected_model, user_message_str, images)
+            
+            if not vision_result["success"]:
+                logger.warning(f"Vision processing failed: {vision_result['error']}")
+                await send_error_response(websocket, vision_result["error"])
                 continue
-                
+            
+            # Prepare messages
+            messages = prepare_base_messages()
+            
+            if vision_result["data"]["has_images"]:
+                # Use Groq format for all models - ollama.py will convert if needed
+                vision_message = prepare_vision_message("user", user_message_str, images, "groq")
+                messages.append(vision_message)
+                logger.info(f"Processing {vision_result['image_count']} images for model: {selected_model}")
             else:
-                # No images, simple text message
                 messages.append({
                     "role": "user", 
                     "content": user_message_str
                 })
             
-            logger.debug(f"Prepared messages for AI: {messages}")
+            logger.debug(f"Prepared {len(messages)} messages for AI processing")
             logger.info(f"Processing chat request with model: {selected_model}")
-
-            try:
-                # Get available models to determine the client type
-                groq_models_data = get_groq_models()
-                ollama_models_data = get_ollama_models()
-                
-                # Check if the model is in Groq models
-                is_groq_model = any(model.model_id == selected_model for model in groq_models_data.get("models", []))
-                is_ollama_model = any(model.model_id == selected_model for model in ollama_models_data.get("models", []))
-                
-                if is_groq_model:
-                    logger.info(f"Using Groq client for model: {selected_model}")
-                    # Use Groq streaming with optimized batching
-                    # Prepare chat completion parameters
-                    completion_params = {
-                        "model": str(selected_model),
-                        "messages": messages,  # type: ignore
-                        "stop": None,
-                        "stream": True,
-                    }
-                    
-                    # Add max_tokens if provided
-                    if max_tokens is not None:
-                        completion_params["max_tokens"] = max_tokens
-                        logger.debug(f"Using custom max_tokens: {max_tokens}")
-                    
-                    stream = get_groq_client().chat.completions.create(**completion_params)
-                    
-                    # Batch chunks for better network efficiency
-                    chunk_buffer = ""
-                    last_send_time = time.time()
-                    BATCH_SIZE = 20  # Characters to batch
-                    BATCH_TIMEOUT = 0.05  # 50ms max delay
-                    
-                    for chunk in stream:
-                        if chunk.choices[0].delta.content is not None:
-                            content = chunk.choices[0].delta.content
-                            chunk_buffer += content
-                            
-                            current_time = time.time()
-                            should_send = (
-                                len(chunk_buffer) >= BATCH_SIZE or
-                                current_time - last_send_time >= BATCH_TIMEOUT or
-                                not content.strip()  # Send immediately for whitespace/punctuation
-                            )
-                            
-                            if should_send:
-                                logger.debug(f"Sending batched chunk of {len(chunk_buffer)} characters")
-                                await websocket.send_json({"chunk": chunk_buffer})
-                                chunk_buffer = ""
-                                last_send_time = current_time
-                                await asyncio.sleep(0.001)  # Small delay to prevent overwhelming frontend
-                    
-                    # Send any remaining content
-                    if chunk_buffer:
-                        logger.debug(f"Sending final chunk of {len(chunk_buffer)} characters")
-                        await websocket.send_json({"chunk": chunk_buffer})
-                    
-                    await websocket.send_json({"finish_reason": "completed"})
-                    logger.info(f"Completed Groq chat response for model: {selected_model}")
-                    
-                elif is_ollama_model:
-                    # Use Ollama streaming with optimized batching
-                    logger.info(f"Using Ollama client for model: {selected_model}")
-                    
-                    chunk_buffer = ""
-                    last_send_time = time.time()
-                    BATCH_SIZE = 20  # Characters to batch
-                    BATCH_TIMEOUT = 0.05  # 50ms max delay
-                    
-                    for chunk in stream_ollama_chat(selected_model, messages, max_tokens):
-                        if chunk:  # Only process non-empty chunks
-                            chunk_buffer += chunk
-                            
-                            current_time = time.time()
-                            should_send = (
-                                len(chunk_buffer) >= BATCH_SIZE or
-                                current_time - last_send_time >= BATCH_TIMEOUT or
-                                not chunk.strip()  # Send immediately for whitespace/punctuation
-                            )
-                            
-                            if should_send:
-                                logger.debug(f"Sending Ollama batched chunk of {len(chunk_buffer)} characters")
-                                await websocket.send_json({"chunk": chunk_buffer})
-                                chunk_buffer = ""
-                                last_send_time = current_time
-                                await asyncio.sleep(0.001)  # Small delay to prevent overwhelming frontend
-                    
-                    # Send any remaining content
-                    if chunk_buffer:
-                        logger.debug(f"Sending final Ollama chunk of {len(chunk_buffer)} characters")
-                        await websocket.send_json({"chunk": chunk_buffer})
-                        
-                    await websocket.send_json({"finish_reason": "completed"})
-                    logger.info(f"Completed Ollama chat response for model: {selected_model}")
-                    
-                else:
-                    # Model not found in either service
-                    logger.error(f"Model '{selected_model}' not found in available models")
-                    await websocket.send_json({"error": f"Model '{selected_model}' not found in available models."})
-                    await websocket.send_json({"finish_reason": "error"})
-                    
-            except Exception as e:
-                logger.error(f"Error during chat processing: {str(e)}", exc_info=True)
-                bot_reply = f"Error: {str(e)}"
-                await websocket.send_json({"error": bot_reply})
-                await websocket.send_json({"finish_reason": "error"})
+            
+            # Route to appropriate AI provider
+            await route_model_request(websocket, selected_model, messages, max_tokens)
 
     except WebSocketDisconnect:
-        # Client disconnected, no need to close the connection
         logger.info("WebSocket client disconnected")
     except Exception as e:
         logger.error(f"WebSocket error: {e}", exc_info=True)
-        # Only try to close if it wasn't a disconnect error
         try:
             await websocket.close()
         except RuntimeError:
-            # Connection might already be closed
             logger.warning("Failed to close WebSocket connection (may already be closed)")
+
+
+@app.post("/api/models/refresh")
+async def refresh_models():
+    """Refresh the model cache by clearing cached data."""
+    try:
+        logger.info("Refreshing model cache")
+        model_registry.refresh_cache()
+        # Pre-load the models using the new method
+        counts = await model_registry.preload_models()
+        
+        logger.info(f"Model cache refreshed - {counts['total']} models loaded "
+                   f"({counts['groq']} Groq, {counts['ollama']} Ollama)")
+        
+        return {
+            "status": "success",
+            "message": "Model cache refreshed",
+            "total_models": counts['total'],
+            "groq_models": counts['groq'],
+            "ollama_models": counts['ollama']
+        }
+    except Exception as e:
+        logger.error(f"Error refreshing model cache: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "message": f"Failed to refresh model cache: {str(e)}"
+        }
 
 
 if __name__ == "__main__":
