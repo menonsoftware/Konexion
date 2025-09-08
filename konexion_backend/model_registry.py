@@ -6,7 +6,8 @@ AI model data from different providers (Groq, Ollama).
 """
 
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from ai_models.groq import get_groq_models
 from ai_models.ollama import get_ollama_models
 
