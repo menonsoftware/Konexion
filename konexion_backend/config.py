@@ -8,7 +8,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
-class Settings(BaseSettings):
+class Settings(BaseSettings):  # type: ignore[misc]
     """Main application settings that loads all environment variables."""
 
     # Groq Configuration

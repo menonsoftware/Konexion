@@ -214,9 +214,9 @@ def stream_ollama_chat(
         logger.info(f"Payload keys: {list(payload.keys())}")
 
         # Check if any message has images
-        has_images = any("images" in msg for msg in payload["messages"])  # type: ignore[misc,attr-defined]
+        has_images = any("images" in msg for msg in payload["messages"])  # type: ignore[attr-defined]
         if has_images:
-            total_images = sum(len(msg.get("images", [])) for msg in payload["messages"])  # type: ignore[attr-defined]
+            total_images = sum(len(msg.get("images", [])) for msg in payload["messages"])  # type: ignore[attr-defined,misc]
             logger.info(f"Total images in messages: {total_images}")
         else:
             logger.info("No images found in any message")
