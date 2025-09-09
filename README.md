@@ -207,6 +207,20 @@ cd konexion_frontend
 npm run build
 ```
 
+### Pre-commit hooks
+
+# Daily development (lenient)
+make pre-commit
+
+# Production/CI (strict)
+make pre-commit-strict
+
+# Format code
+make format
+
+# Manual linting
+make lint
+
 ### Environment Variables
 Ensure all required environment variables are set in production:
 - AI provider API keys

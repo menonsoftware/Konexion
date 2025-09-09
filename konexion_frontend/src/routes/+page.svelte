@@ -15,11 +15,9 @@
 	import {
 		availableModels,
 		selectedModel,
-		isConnected,
 		isDarkMode,
 		maxTokens,
-		globalModal,
-		modelsRefreshState
+		globalModal
 	} from '$lib/stores.js';
 
 	let isInitialized = false;

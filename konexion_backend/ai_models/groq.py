@@ -1,11 +1,11 @@
 import asyncio
 import logging
 import time
+from typing import Any
 
 import requests
-from groq import Groq
-
 from config import get_groq_config
+from groq import Groq
 from models.ai import AIModel
 
 # Setup logging
@@ -27,7 +27,7 @@ def get_groq_client() -> Groq:
     raise Exception("Groq API key not configured, cannot initialize Groq client")
 
 
-def get_groq_models():
+def get_groq_models() -> dict[str, Any]:
     """Fetch available models from Groq API with proper error handling and logging."""
     if not groq_config.api_key:
         logger.warning("Groq API key not configured, returning empty model list")
@@ -64,9 +64,7 @@ def get_groq_models():
         return {"models": groq_models}
 
     except requests.exceptions.HTTPError as e:
-        logger.error(
-            f"HTTP error fetching Groq models: {e} (Status: {e.response.status_code})"
-        )
+        logger.error(f"HTTP error fetching Groq models: {e} (Status: {e.response.status_code})")
         return {"models": []}
     except requests.exceptions.RequestException as e:
         logger.error(f"Network error fetching Groq models: {e}")
@@ -76,7 +74,9 @@ def get_groq_models():
         return {"models": []}
 
 
-async def stream_groq_chat(websocket, model_name, messages, max_tokens=None):
+async def stream_groq_chat(
+    websocket: Any, model_name: str, messages: list[dict[str, Any]], max_tokens: int | None = None
+) -> None:
     """
     Stream chat response from Groq model with WebSocket integration.
 
@@ -107,8 +107,8 @@ async def stream_groq_chat(websocket, model_name, messages, max_tokens=None):
         # Batch chunks for better network efficiency
         chunk_buffer = ""
         last_send_time = time.time()
-        BATCH_SIZE = 20  # Characters to batch
-        BATCH_TIMEOUT = 0.05  # 50ms max delay
+        batch_size = 20  # Characters to batch
+        batch_timeout = 0.05  # 50ms max delay
 
         for chunk in stream:
             if chunk.choices[0].delta.content is not None:
@@ -117,21 +117,17 @@ async def stream_groq_chat(websocket, model_name, messages, max_tokens=None):
 
                 current_time = time.time()
                 should_send = (
-                    len(chunk_buffer) >= BATCH_SIZE
-                    or current_time - last_send_time >= BATCH_TIMEOUT
+                    len(chunk_buffer) >= batch_size
+                    or current_time - last_send_time >= batch_timeout
                     or not content.strip()  # Send immediately for whitespace/punctuation
                 )
 
                 if should_send:
-                    logger.debug(
-                        f"Sending batched chunk of {len(chunk_buffer)} characters"
-                    )
+                    logger.debug(f"Sending batched chunk of {len(chunk_buffer)} characters")
                     await websocket.send_json({"chunk": chunk_buffer})
                     chunk_buffer = ""
                     last_send_time = current_time
-                    await asyncio.sleep(
-                        0.001
-                    )  # Small delay to prevent overwhelming frontend
+                    await asyncio.sleep(0.001)  # Small delay to prevent overwhelming frontend
 
         # Send any remaining content
         if chunk_buffer:

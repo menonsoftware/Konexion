@@ -1,0 +1,40 @@
+# Pre-commit configuration for development
+# This is a more lenient version for day-to-day development
+
+repos:
+  # General hooks for all files
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # Python backend hooks - basic formatting only
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      # Run the formatter only
+      - id: ruff-format
+        name: ruff format (backend)
+        files: ^konexion_backend/.*\.py$
+
+  # Frontend hooks - formatting only
+  - repo: local
+    hooks:
+      - id: prettier-frontend
+        name: prettier (frontend)
+        entry: bash -c 'cd konexion_frontend && npm run format'
+        language: system
+        files: ^konexion_frontend/.*\.(js|ts|svelte|json|css|md|html)$
+        exclude: ^konexion_frontend/(node_modules/|\.svelte-kit/|build/)
+        pass_filenames: false
+
+# Global configuration
+fail_fast: false

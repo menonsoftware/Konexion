@@ -58,7 +58,7 @@
 				return `<code class="inline-code bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">${safeCode}</code>`;
 			};
 
-			const tempMarked = marked.setOptions({
+			marked.setOptions({
 				breaks: true,
 				gfm: true,
 				renderer: tempRenderer,
@@ -99,9 +99,9 @@
 				safeContent = '';
 			} else if (typeof content === 'object') {
 				// Check if the object has meaningful content properties
-				if (content.hasOwnProperty('content')) {
+				if (Object.prototype.hasOwnProperty.call(content, 'content')) {
 					safeContent = String(content.content);
-				} else if (content.hasOwnProperty('text')) {
+				} else if (Object.prototype.hasOwnProperty.call(content, 'text')) {
 					safeContent = String(content.text);
 				} else {
 					// Try to stringify, but avoid [object Object]
@@ -112,7 +112,7 @@
 						} else {
 							safeContent = '[Invalid content]';
 						}
-					} catch (e) {
+					} catch {
 						safeContent = '[Invalid content]';
 					}
 				}
@@ -270,7 +270,7 @@
 					{#if message.images && message.images.length > 0}
 						<div class="mb-2">
 							<div class="flex flex-wrap gap-2">
-								{#each message.images as image}
+								{#each message.images as image, index (image.name || index)}
 									<div class="group relative">
 										<button
 											type="button"
@@ -300,7 +300,7 @@
 					{/if}
 				{:else if message.isComplete}
 					<div class="message-content">
-						{#each processedContent as block}
+						{#each processedContent as block, index (block.type + index)}
 							{#if block.type === 'code'}
 								<div class="my-3">
 									<CodeBlock code={block.content} language={block.language} />
@@ -317,6 +317,7 @@
 								</details>
 							{:else if block.type === 'html'}
 								<div class="prose prose-sm dark:prose-invert max-w-none">
+									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 									{@html block.content}
 								</div>
 							{:else if block.type === 'text'}
@@ -326,13 +327,14 @@
 					</div>
 				{:else}
 					<div class="streaming-content">
-						{#each processedContent as block}
+						{#each processedContent as block, index (block.type + index)}
 							{#if block.type === 'code'}
 								<div class="my-3">
 									<CodeBlock code={block.content} language={block.language} />
 								</div>
 							{:else if block.type === 'html'}
 								<div class="text-sm whitespace-pre-wrap">
+									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 									{@html block.content}<span class="animate-pulse">|</span>
 								</div>
 							{:else if block.type === 'text'}

@@ -1,0 +1,78 @@
+# Ruff configuration for Konexion backend
+# Modern Python linter and formatter
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "__pycache__",
+]
+
+# Same as Black.
+line-length = 120
+indent-width = 4
+
+# Assume Python 3.12
+target-version = "py312"
+
+[lint]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+# Additionally enable:
+# - pep8-naming (`N`) for naming conventions
+# - pyupgrade (`UP`) for Python version upgrades
+# - flake8-bugbear (`B`) for common bugs
+# - flake8-simplify (`SIM`) for code simplification
+# - flake8-comprehensions (`C4`) for comprehension improvements
+# Note: Removed `I` (isort) to avoid conflicts with standalone isort tool
+select = ["E", "F", "N", "UP", "B", "SIM", "C4", "W", "TCH"]
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+[lint.per-file-ignores]
+# Allow unused imports in __init__.py files
+"__init__.py" = ["F401"]
+# Allow print statements in scripts and examples
+"scripts/*" = ["T201"]
+"examples/*" = ["T201"]
+
+[lint.isort]
+known-first-party = ["konexion_backend", "ai_models", "models"]
+known-third-party = ["fastapi", "pydantic", "groq", "requests"]
+
+[lint.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"

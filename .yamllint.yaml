@@ -1,0 +1,43 @@
+# YAML Lint configuration
+# Controls how YAML files are validated
+
+extends: default
+
+rules:
+  # Line length - more flexible than default
+  line-length:
+    max: 120
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # Comments
+  comments:
+    min-spaces-from-content: 1
+
+  # Indentation
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Truthy values - allow yes/no, on/off
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+
+  # Document start
+  document-start:
+    present: false
+
+  # Empty lines
+  empty-lines:
+    max: 2
+    max-start: 1
+    max-end: 1
+
+# Files to ignore
+ignore: |
+  *.github/*
+  */.svelte-kit/*
+  */node_modules/*
+  */build/*
+  */dist/*

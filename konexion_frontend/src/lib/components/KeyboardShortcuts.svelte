@@ -25,8 +25,6 @@
 </script>
 
 {#if show}
-	<!-- svelte-ignore a11y-click-events-have-key-events -->
-	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 	<div
 		class="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4"
 		on:click={close}

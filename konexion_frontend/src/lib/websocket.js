@@ -3,11 +3,9 @@ import {
 	messages,
 	isConnected,
 	isLoading,
-	selectedModel,
 	isTyping,
 	maxTokens
 } from '$lib/stores.js';
-import { get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { perfMonitor } from '$lib/performance.js';
 import { config, getWebSocketUrl } from '$lib/config.js';
@@ -103,9 +101,9 @@ export class WebSocketService {
 			cleanChunk = chunk;
 		} else if (chunk !== null && chunk !== undefined) {
 			// Handle objects or other data types properly
-			if (typeof chunk === 'object' && chunk.hasOwnProperty('content')) {
+			if (typeof chunk === 'object' && Object.prototype.hasOwnProperty.call(chunk, 'content')) {
 				cleanChunk = String(chunk.content);
-			} else if (typeof chunk === 'object' && chunk.hasOwnProperty('text')) {
+			} else if (typeof chunk === 'object' && Object.prototype.hasOwnProperty.call(chunk, 'text')) {
 				cleanChunk = String(chunk.text);
 			} else {
 				// Convert to string but only if it's meaningful content
@@ -190,7 +188,7 @@ export class WebSocketService {
 		perfMonitor.recordUIUpdate(endTime - startTime);
 	}
 
-	handleStreamingComplete(finishReason) {
+	handleStreamingComplete() {
 		// Flush any remaining buffer before completing
 		if (chunkBuffer) {
 			this.flushChunkBuffer();
@@ -278,9 +276,9 @@ export class WebSocketService {
 				cleanContent = '';
 			} else if (typeof content === 'object') {
 				// Check for meaningful object properties first
-				if (content.hasOwnProperty('content')) {
+				if (Object.prototype.hasOwnProperty.call(content, 'content')) {
 					cleanContent = String(content.content);
-				} else if (content.hasOwnProperty('text')) {
+				} else if (Object.prototype.hasOwnProperty.call(content, 'text')) {
 					cleanContent = String(content.text);
 				} else {
 					try {
@@ -290,7 +288,7 @@ export class WebSocketService {
 						} else {
 							cleanContent = '[Invalid content]';
 						}
-					} catch (e) {
+					} catch {
 						cleanContent = '[Invalid content]';
 					}
 				}

@@ -85,6 +85,7 @@
 							class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full {icon.bgClass ||
 								'bg-gray-100 dark:bg-gray-700'}"
 						>
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 							{@html icon.svg}
 						</div>
 					{/if}
@@ -104,6 +105,7 @@
 			<!-- Modal Content -->
 			{#if content}
 				<div class="mb-6">
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 					{@html content}
 				</div>
 			{/if}

@@ -1,13 +1,8 @@
 """
 Configuration module for the Konexion backend application.
-Lo    # Vision Models Configuration
-    vision_models: str = Field(
-        default="llava,bakllava,llava-phi3,moondream,vision,llama-3.2-11b-vision-preview,llama-3.2-90b-vision-preview,gpt-4-vision-preview,gpt-4o",
-        description="Comma-separated list of model keywords that support vision capabilities"
-    ),ll environment variables using Pydantic Settings for type safety and validation.
-"""
 
-from typing import Optional
+Loads all environment variables using Pydantic Settings for type safety and validation.
+"""
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -17,50 +12,33 @@ class Settings(BaseSettings):
     """Main application settings that loads all environment variables."""
 
     # Groq Configuration
-    groq_api_key: Optional[str] = Field(
-        default=None, description="Groq API key for authentication"
-    )
-    groq_url: str = Field(
-        default="https://api.groq.com/openai/v1/models", description="Groq API base URL"
-    )
+    groq_api_key: str | None = Field(default=None, description="Groq API key for authentication")
+    groq_url: str = Field(default="https://api.groq.com/openai/v1/models", description="Groq API base URL")
 
     # Ollama Configuration
-    ollama_url: str = Field(
-        default="http://localhost:11434", description="Ollama service URL"
-    )
+    ollama_url: str = Field(default="http://localhost:11434", description="Ollama service URL")
     ollama_timeout: int = Field(default=30, description="Request timeout in seconds")
-    ollama_max_tokens: int = Field(
-        default=2048, description="Maximum number of tokens to generate in responses"
-    )
+    ollama_max_tokens: int = Field(default=2048, description="Maximum number of tokens to generate in responses")
 
     # Server Configuration
-    server_host: str = Field(default="0.0.0.0", description="Server host")
+    server_host: str = Field(
+        default="0.0.0.0",
+        description="Server host",  # nosec B104
+    )
     server_port: int = Field(default=8000, description="Server port")
     debug: bool = Field(default=False, description="Debug mode")
     reload: bool = Field(default=False, description="Auto-reload on code changes")
-    workers: int = Field(
-        default=1, description="Number of worker processes for the server"
-    )
+    workers: int = Field(default=1, description="Number of worker processes for the server")
 
     # Database Configuration
-    database_url: Optional[str] = Field(
-        default=None, description="Database connection URL"
-    )
-    database_max_connections: int = Field(
-        default=10, description="Maximum database connections"
-    )
+    database_url: str | None = Field(default=None, description="Database connection URL")
+    database_max_connections: int = Field(default=10, description="Maximum database connections")
 
     # Security Configuration
-    secret_key: Optional[str] = Field(
-        default=None, description="Secret key for JWT and sessions"
-    )
+    secret_key: str | None = Field(default=None, description="Secret key for JWT and sessions")
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
-    access_token_expire_minutes: int = Field(
-        default=30, description="Access token expiration time in minutes"
-    )
-    cors_origins: str = Field(
-        default="*", description="Comma-separated list of allowed CORS origins"
-    )
+    access_token_expire_minutes: int = Field(default=30, description="Access token expiration time in minutes")
+    cors_origins: str = Field(default="*", description="Comma-separated list of allowed CORS origins")
 
     # Logging Configuration
     log_level: str = Field(default="INFO", description="Logging level")
@@ -68,7 +46,7 @@ class Settings(BaseSettings):
         default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         description="Log message format",
     )
-    log_file: Optional[str] = Field(default=None, description="Log file path")
+    log_file: str | None = Field(default=None, description="Log file path")
 
     # Vision Models Configuration
     vision_models: str = Field(
@@ -77,9 +55,7 @@ class Settings(BaseSettings):
     )
 
     # Environment
-    environment: str = Field(
-        default="development", description="Application environment"
-    )
+    environment: str = Field(default="development", description="Application environment")
 
     model_config = {
         "env_file": ".env",
@@ -106,7 +82,7 @@ class GroqConfig:
         self._settings = settings
 
     @property
-    def api_key(self) -> Optional[str]:
+    def api_key(self) -> str | None:
         return self._settings.groq_api_key
 
     @property
@@ -167,7 +143,7 @@ class DatabaseConfig:
         self._settings = settings
 
     @property
-    def url(self) -> Optional[str]:
+    def url(self) -> str | None:
         return self._settings.database_url
 
     @property
@@ -182,7 +158,7 @@ class SecurityConfig:
         self._settings = settings
 
     @property
-    def secret_key(self) -> Optional[str]:
+    def secret_key(self) -> str | None:
         return self._settings.secret_key
 
     @property
@@ -217,7 +193,7 @@ class LoggingConfig:
         return self._settings.log_format
 
     @property
-    def file(self) -> Optional[str]:
+    def file(self) -> str | None:
         return self._settings.log_file
 
 
@@ -267,7 +243,8 @@ def reload_settings() -> Settings:
     Reload settings from environment variables and .env file.
     Useful for testing or runtime configuration changes.
     """
-    global settings, groq_config, ollama_config, server_config, database_config, security_config, logging_config, vision_config
+    global settings, groq_config, ollama_config, server_config
+    global database_config, security_config, logging_config, vision_config
     settings = Settings()
     groq_config = GroqConfig(settings)
     ollama_config = OllamaConfig(settings)

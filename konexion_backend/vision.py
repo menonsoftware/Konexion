@@ -9,7 +9,7 @@ This module handles all vision-related functionality including:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from config import get_vision_config
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class VisionProcessor:
     """Handles vision and image processing for AI models."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.vision_config = get_vision_config()
         logger.debug("VisionProcessor initialized")
 
@@ -36,7 +36,7 @@ class VisionProcessor:
         """
         return self.vision_config.supports_vision(model_name)
 
-    def extract_base64_from_data_url(self, data_url: str) -> Tuple[str, str]:
+    def extract_base64_from_data_url(self, data_url: str) -> tuple[str, str]:
         """
         Extract base64 data and image type from data URL.
 
@@ -55,21 +55,20 @@ class VisionProcessor:
             header, base64_data = data_url.split(",", 1)
 
             # Extract image type from header (e.g., 'data:image/jpeg;base64')
-            if ":" in header and "/" in header:
-                image_type = header.split(":")[1].split(";")[0]
-            else:
-                image_type = "image/jpeg"  # Default fallback
+            # if ":" in header and "/" in header:
+            #     image_type = header.split(":")[1].split(";")[0]
+            # else:
+            #     image_type = "image/jpeg"  # Default fallback
+            image_type = header.split(":")[1].split(";")[0] if ":" in header and "/" in header else "image/jpeg"
 
-            logger.debug(
-                f"Extracted image type: {image_type}, data length: {len(base64_data)}"
-            )
+            logger.debug(f"Extracted image type: {image_type}, data length: {len(base64_data)}")
             return base64_data, image_type
 
         except Exception as e:
             logger.error(f"Error extracting data from URL: {e}")
             return "", "image/jpeg"
 
-    def validate_images(self, images: List[Dict[str, Any]]) -> Tuple[bool, str]:
+    def validate_images(self, images: list[dict[str, Any]]) -> tuple[bool, str]:
         """
         Validate image data and format.
 
@@ -83,30 +82,28 @@ class VisionProcessor:
             return True, ""
 
         if not isinstance(images, list):
-            return False, "Images must be provided as a list"
+            return False, "Images must be provided as a list"  # type: ignore[unreachable]
 
         for i, image in enumerate(images):
             if not isinstance(image, dict):
-                return False, f"Image {i+1} must be an object with 'data' field"
+                return False, f"Image {i + 1} must be an object with 'data' field"  # type: ignore[unreachable]
 
             if not image.get("data"):
-                return False, f"Image {i+1} is missing 'data' field"
+                return False, f"Image {i + 1} is missing 'data' field"
 
             data_url = image["data"]
             if not isinstance(data_url, str):
-                return False, f"Image {i+1} data must be a string"
+                return False, f"Image {i + 1} data must be a string"
 
             if not data_url.startswith("data:"):
                 return (
                     False,
-                    f"Image {i+1} data must be a valid data URL starting with 'data:'",
+                    f"Image {i + 1} data must be a valid data URL starting with 'data:'",
                 )
 
         return True, ""
 
-    def prepare_groq_vision_content(
-        self, user_message: str, images: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def prepare_groq_vision_content(self, user_message: str, images: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Prepare message content for Groq vision models.
 
@@ -128,28 +125,20 @@ class VisionProcessor:
         # Add images using Groq vision schema
         for image in images:
             if image.get("data"):
-                base64_data, image_type = self.extract_base64_from_data_url(
-                    image["data"]
-                )
+                base64_data, image_type = self.extract_base64_from_data_url(image["data"])
 
                 if base64_data:
                     user_content.append(
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{image_type};base64,{base64_data}"
-                            },
+                            "image_url": {"url": f"data:{image_type};base64,{base64_data}"},  # type: ignore[dict-item]
                         }
                     )
-                    logger.debug(
-                        f"Added image to Groq vision content: {image.get('name', 'Unknown')}"
-                    )
+                    logger.debug(f"Added image to Groq vision content: {image.get('name', 'Unknown')}")
 
         return user_content
 
-    def prepare_ollama_vision_data(
-        self, user_message: str, images: List[Dict[str, Any]]
-    ) -> Tuple[str, List[str]]:
+    def prepare_ollama_vision_data(self, user_message: str, images: list[dict[str, Any]]) -> tuple[str, list[str]]:
         """
         Prepare message and image data for Ollama vision models.
 
@@ -165,14 +154,19 @@ class VisionProcessor:
 
         # Extract base64 images for Ollama format
         images_list = []
-        for image in images:
+        logger.debug(f"Processing {len(images)} images for Ollama vision")
+
+        for i, image in enumerate(images):
             if image.get("data"):
-                base64_data, _ = self.extract_base64_from_data_url(image["data"])
+                data_url = image["data"]
+                logger.debug(f"Image {i+1} data URL prefix: {data_url[:100] if len(data_url) > 100 else data_url}")
+                base64_data, image_type = self.extract_base64_from_data_url(data_url)
                 if base64_data:
                     images_list.append(base64_data)
-                    logger.debug(
-                        f"Added image to Ollama vision data: {image.get('name', 'Unknown')}"
-                    )
+                else:
+                    logger.warning(f"Failed to extract base64 data from image {i+1}")
+            else:
+                logger.warning(f"Image {i+1} missing 'data' field")
 
         return text_content, images_list
 
@@ -180,9 +174,9 @@ class VisionProcessor:
         self,
         role: str,
         user_message: str,
-        images: List[Dict[str, Any]],
+        images: list[dict[str, Any]],
         model_format: str = "groq",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Format a complete message object for vision models.
 
@@ -200,9 +194,7 @@ class VisionProcessor:
             return {"role": role, "content": content}
         elif model_format.lower() == "ollama":
             # For Ollama, we return separate text and images
-            text_content, images_list = self.prepare_ollama_vision_data(
-                user_message, images
-            )
+            text_content, images_list = self.prepare_ollama_vision_data(user_message, images)
             return {
                 "role": role,
                 "content": text_content,
@@ -222,9 +214,7 @@ class VisionProcessor:
         Returns:
             str: Formatted error message
         """
-        vision_models = ", ".join(
-            self.vision_config.models_list[:5]
-        )  # Show first 5 models
+        vision_models = ", ".join(self.vision_config.models_list[:5])  # Show first 5 models
         if len(self.vision_config.models_list) > 5:
             vision_models += "..."
 
@@ -236,8 +226,8 @@ class VisionProcessor:
         )
 
     def process_vision_request(
-        self, model_name: str, user_message: str, images: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, model_name: str, user_message: str, images: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Process a vision request and return the appropriate response.
 
@@ -249,7 +239,7 @@ class VisionProcessor:
         Returns:
             Dict[str, Any]: Processing result with status and data
         """
-        result = {
+        result: dict[str, Any] = {
             "success": False,
             "error": None,
             "data": None,
@@ -271,9 +261,7 @@ class VisionProcessor:
 
             if images and not supports_vision:
                 # Model doesn't support vision but images were provided
-                result["error"] = self.create_vision_error_message(
-                    model_name, len(images)
-                )
+                result["error"] = self.create_vision_error_message(model_name, len(images))
                 logger.warning(
                     f"Model {model_name} does not support vision. User attempted to send {len(images)} images."
                 )
@@ -281,9 +269,7 @@ class VisionProcessor:
 
             elif images and supports_vision:
                 # Model supports vision and images were provided
-                logger.info(
-                    f"Processing {len(images)} images for vision-enabled model: {model_name}"
-                )
+                logger.info(f"Processing {len(images)} images for vision-enabled model: {model_name}")
                 result["success"] = True
                 result["data"] = {"has_images": True, "message_type": "vision"}
                 return result
@@ -313,18 +299,14 @@ def supports_vision(model_name: str) -> bool:
 def prepare_vision_message(
     role: str,
     user_message: str,
-    images: List[Dict[str, Any]],
+    images: list[dict[str, Any]],
     model_format: str = "groq",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Format a message for vision models."""
-    return vision_processor.format_vision_message(
-        role, user_message, images, model_format
-    )
+    return vision_processor.format_vision_message(role, user_message, images, model_format)
 
 
-def process_vision_request(
-    model_name: str, user_message: str, images: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+def process_vision_request(model_name: str, user_message: str, images: list[dict[str, Any]]) -> dict[str, Any]:
     """Process a vision request and return appropriate response."""
     return vision_processor.process_vision_request(model_name, user_message, images)
 

@@ -116,7 +116,7 @@
 			} else {
 				highlightedCode = cleanCode;
 			}
-		} catch (error) {
+		} catch {
 			let fallbackCode = typeof code === 'string' ? code : String(code);
 			fallbackCode = fallbackCode.replace(/\[object Object\]/g, 'appropriate_command');
 			highlightedCode = fallbackCode;
@@ -196,8 +196,10 @@
 	<!-- Code content -->
 	<pre
 		class="m-0 overflow-x-auto rounded-b-lg border border-gray-300 bg-gray-50 p-4 text-sm leading-relaxed dark:border-gray-600 dark:bg-gray-900"><code
-			class="language-{language}">{@html highlightedCode || code}</code
-		></pre>
+			class="language-{language}">
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+			{@html highlightedCode || code}
+		</code></pre>
 </div>
 
 <style>

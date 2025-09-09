@@ -1,0 +1,23 @@
+# Bandit security configuration for Python backend
+# Security scanner for Python code
+
+# Test IDs to skip
+skips:
+  # B101: Test for use of assert - we might use assert for type checking
+  - B101
+  # B104: Hardcoded bind all interfaces - acceptable for development server
+  - B104
+  # B601: Shell injection via subprocess - we control our subprocess calls
+  - B601
+
+# Test IDs to exclude (if needed)
+exclude_dirs:
+  - '*/tests/*'
+  - '*/__pycache__/*'
+  - '*/.venv/*'
+  - '*/venv/*'
+
+# Severity level
+# Options: low, medium, high
+confidence: medium
+severity: medium

@@ -1,9 +1,6 @@
 <script>
 	import { selectedModel, availableModels, isLoading, maxTokens } from '$lib/stores.js';
 	import { wsService } from '$lib/websocket.js';
-	import { createEventDispatcher } from 'svelte';
-
-	const dispatch = createEventDispatcher();
 
 	let message = '';
 	let textarea;
@@ -25,17 +22,13 @@
 	// Check if current model supports vision
 	$: supportsVision =
 		$selectedModel &&
-		($selectedModel.toLowerCase().includes('gemma3') ||
-			$selectedModel.toLowerCase().includes('scout') ||
+		($selectedModel.toLowerCase().includes('scout') ||
 			$selectedModel.toLowerCase().includes('maverick') ||
 			$selectedModel.toLowerCase().includes('llava') ||
 			$selectedModel.toLowerCase().includes('bakllava') ||
 			$selectedModel.toLowerCase().includes('llava-phi3') ||
 			$selectedModel.toLowerCase().includes('moondream') ||
 			$selectedModel.toLowerCase().includes('vision') ||
-			$selectedModel.toLowerCase().includes('llama-3.2-11b-vision-preview') ||
-			$selectedModel.toLowerCase().includes('llama-3.2-90b-vision-preview') ||
-			$selectedModel.toLowerCase().includes('gpt-4-vision-preview') ||
 			$selectedModel.toLowerCase().includes('gpt-4o'));
 
 	// Reset selected index when filtered models change
@@ -409,9 +402,7 @@
 												>
 													{model.client_type}
 												</span>
-												{#if model.model_id.toLowerCase().includes('gemma3') || model.model_id
-														.toLowerCase()
-														.includes('llava') || model.model_id
+												{#if model.model_id.toLowerCase().includes('llava') || model.model_id
 														.toLowerCase()
 														.includes('scout') || model.model_id
 														.toLowerCase()
@@ -419,9 +410,13 @@
 														.toLowerCase()
 														.includes('vision') || model.model_id
 														.toLowerCase()
-														.includes('llama-3.2-11b-vision-preview') || model.model_id
+														.includes('gpt-4o') || model.model_id
 														.toLowerCase()
-														.includes('llama-3.2-90b-vision-preview')}
+														.includes('bakllava') || model.model_id
+														.toLowerCase()
+														.includes('llava-phi3') || model.model_id
+														.toLowerCase()
+														.includes('moondream')}
 													<span
 														class="inline-flex flex-shrink-0 items-center rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
 													>

@@ -123,7 +123,7 @@ validator.addTest('CSS Performance Features', () => {
 				return Array.from(sheet.cssRules)
 					.map((rule) => rule.cssText)
 					.join('\n');
-			} catch (e) {
+			} catch {
 				return '';
 			}
 		})

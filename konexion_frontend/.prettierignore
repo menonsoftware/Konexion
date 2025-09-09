@@ -5,5 +5,27 @@ yarn.lock
 bun.lock
 bun.lockb
 
+# Build output
+build/
+dist/
+.svelte-kit/
+
+# Generated files
+*.min.js
+*.min.css
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
 # Miscellaneous
 /static/

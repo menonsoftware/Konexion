@@ -11,3 +11,22 @@ dependencies = [
     "requests>=2.32.5",
     "websockets>=15.0.1",
 ]
+
+[dependency-groups]
+dev = [
+    "bandit[toml]>=1.8.6",
+    "black>=25.1.0",
+    "isort>=6.0.1",
+    "mypy>=1.17.1",
+    "pre-commit>=4.3.0",
+    "ruff>=0.12.12",
+    "yamllint>=1.37.1",
+]
+
+[project.scripts]
+lint = "ruff check ."
+format = "ruff format ."
+type-check = "mypy ."
+security-check = "bandit -r . -c bandit.yaml"
+sort-imports = "isort ."
+check-all = "python -c 'import subprocess; subprocess.run([\"ruff\", \"check\", \".\"]); subprocess.run([\"ruff\", \"format\", \"--check\", \".\"]); subprocess.run([\"mypy\", \".\"]); subprocess.run([\"bandit\", \"-r\", \".\", \"-c\", \"bandit.yaml\"])'"
