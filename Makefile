@@ -51,17 +51,17 @@ security-check:
 
 # Pre-commit
 pre-commit:
-	pre-commit run --config .pre-commit-config-dev.yaml --all-files
+	cd konexion_backend && uv run pre-commit run --config ../.pre-commit-config-dev.yaml --all-files
 
 pre-commit-strict:
-	pre-commit run --config .pre-commit-config.yaml --all-files
+	cd konexion_backend && uv run pre-commit run --config ../.pre-commit-config.yaml --all-files
 
 pre-commit-install:
-	pre-commit install
+	cd konexion_backend && uv run pre-commit install
 
 # Development servers
 dev-backend:
-	cd konexion_backend && ./run.sh
+	cd konexion_backend && uv run python main.py
 
 dev-frontend:
 	cd konexion_frontend && npm run dev
@@ -74,4 +74,4 @@ clean:
 	@echo "Cleaning Node.js cache..."
 	cd konexion_frontend && rm -rf .svelte-kit build node_modules/.cache 2>/dev/null || true
 	@echo "Cleaning pre-commit cache..."
-	pre-commit clean 2>/dev/null || true
+	cd konexion_backend && uv run pre-commit clean 2>/dev/null || true
