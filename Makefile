@@ -43,7 +43,7 @@ format:
 
 type-check:
 	@echo "Type checking backend..."
-	cd konexion_backend && uv run mypy .
+	cd konexion_backend && uv run mypy
 
 security-check:
 	@echo "Running security scan..."
@@ -61,14 +61,14 @@ pre-commit-install:
 
 # Development servers
 dev-backend:
-	cd konexion_backend && uv run python main.py
+	cd konexion_backend && PYTHONPATH=../ uv run python main.py
 
 dev-frontend:
 	cd konexion_frontend && npm run dev
 
 start-all:
 	@echo "Starting backend and frontend development servers..."
-	cd konexion_backend && uv run python main.py &
+	cd konexion_backend && PYTHONPATH=../ uv run python main.py &
 	cd konexion_frontend && npm run dev
 
 # Cleanup

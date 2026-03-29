@@ -57,7 +57,7 @@ unfixable = []
 "examples/*" = ["T201"]
 
 [lint.isort]
-known-first-party = ["konexion_backend", "ai_models", "models"]
+known-first-party = ["konexion_backend", "ai_model", "models"]
 known-third-party = ["fastapi", "pydantic", "groq", "requests"]
 
 [lint.mccabe]

@@ -3,13 +3,14 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
-from ai_clients.unified_client import stream_chat
-from config import get_logging_config, get_security_config, get_server_config
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from model_registry import model_registry
 from starlette.websockets import WebSocketDisconnect
-from vision import prepare_vision_message, process_vision_request
+from utils.model_registry import model_registry
+
+from konexion_backend.config import get_logging_config, get_security_config, get_server_config
+from konexion_backend.services.unified_ai_service import stream_chat
+from konexion_backend.services.vision_service import prepare_vision_message, process_vision_request
 
 # Setup logging
 logging_config = get_logging_config()

@@ -4,9 +4,10 @@ import time
 from typing import Any
 
 import requests
-from config import get_groq_config, get_ollama_config
-from models.ai import AIModel
 from openai import OpenAI
+
+from konexion_backend.config import get_groq_config, get_ollama_config
+from konexion_backend.models.ai_model import AIModel
 
 # Setup logging
 logger = logging.getLogger(__name__)

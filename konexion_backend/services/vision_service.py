@@ -11,7 +11,7 @@ This module handles all vision-related functionality including:
 import logging
 from typing import Any
 
-from config import get_vision_config
+from konexion_backend.config import get_vision_config
 
 # Setup logging
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ AI model data from different providers (Groq, Ollama).
 import logging
 from typing import Any
 
-from ai_clients.unified_client import get_groq_models, get_ollama_models
+from konexion_backend.services.unified_ai_service import get_groq_models, get_ollama_models
 
 # Setup logging
 logger = logging.getLogger(__name__)

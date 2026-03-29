@@ -64,6 +64,12 @@ class Settings(BaseSettings):  # type: ignore[misc]
         "extra": "ignore",
     }
 
+    # Model Context Protocol (MCP) Configuration
+
+    mcp_url: str = Field(default="http://localhost:8080/mcp", description="MCP service URL")
+    mcp_enabled: bool = Field(default=False, description="Whether to enable Model Context Protocol (MCP)")
+    mcp_gateway_timeout: int = Field(default=30, description="Timeout for MCP gateway requests in seconds")
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Convert CORS origins string to list."""
@@ -217,6 +223,23 @@ class VisionConfig:
         return any(vision_keyword in model_lower for vision_keyword in self.models_list)
 
 
+class MCPConfig:
+    def __init__(self, settings: Settings):
+        self._settings = settings
+
+    @property
+    def url(self) -> str:
+        return self._settings.mcp_url
+
+    @property
+    def enabled(self) -> bool:
+        return self._settings.mcp_enabled
+
+    @property
+    def gateway_timeout(self) -> int:
+        return self._settings.mcp_gateway_timeout
+
+
 # Global settings instance
 settings = Settings()
 
@@ -228,6 +251,7 @@ database_config = DatabaseConfig(settings)
 security_config = SecurityConfig(settings)
 logging_config = LoggingConfig(settings)
 vision_config = VisionConfig(settings)
+mcp_config = MCPConfig(settings)
 
 
 def get_settings() -> Settings:
@@ -244,7 +268,7 @@ def reload_settings() -> Settings:
     Useful for testing or runtime configuration changes.
     """
     global settings, groq_config, ollama_config, server_config
-    global database_config, security_config, logging_config, vision_config
+    global database_config, security_config, logging_config, vision_config, mcp_config
     settings = Settings()
     groq_config = GroqConfig(settings)
     ollama_config = OllamaConfig(settings)
@@ -253,6 +277,8 @@ def reload_settings() -> Settings:
     security_config = SecurityConfig(settings)
     logging_config = LoggingConfig(settings)
     vision_config = VisionConfig(settings)
+    mcp_config = MCPConfig(settings)
+
     return settings
 
 
@@ -292,6 +318,11 @@ def get_vision_config() -> VisionConfig:
     return vision_config
 
 
+def get_mcp_config() -> MCPConfig:
+    """Get Model Context Protocol (MCP) configuration."""
+    return mcp_config
+
+
 # Export commonly used settings for easy access
 __all__ = [
     "Settings",
@@ -302,6 +333,7 @@ __all__ = [
     "SecurityConfig",
     "LoggingConfig",
     "VisionConfig",
+    "MCPConfig",
     "settings",
     "groq_config",
     "ollama_config",
@@ -319,4 +351,5 @@ __all__ = [
     "get_security_config",
     "get_logging_config",
     "get_vision_config",
+    "get_mcp_config",
 ]

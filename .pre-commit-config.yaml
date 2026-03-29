@@ -47,6 +47,7 @@ repos:
       - id: mypy
         name: mypy (backend)
         files: ^konexion_backend/.*\.py$
+        pass_filenames: false
         additional_dependencies:
           - types-requests
           - pydantic
