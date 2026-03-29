@@ -66,6 +66,11 @@ dev-backend:
 dev-frontend:
 	cd konexion_frontend && npm run dev
 
+start-all:
+	@echo "Starting backend and frontend development servers..."
+	cd konexion_backend && uv run python main.py &
+	cd konexion_frontend && npm run dev
+
 # Cleanup
 clean:
 	@echo "Cleaning Python cache files..."

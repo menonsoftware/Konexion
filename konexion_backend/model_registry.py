@@ -8,8 +8,7 @@ AI model data from different providers (Groq, Ollama).
 import logging
 from typing import Any
 
-from ai_models.groq import get_groq_models
-from ai_models.ollama import get_ollama_models
+from ai_clients.unified_client import get_groq_models, get_ollama_models
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -181,8 +180,7 @@ class ModelRegistry:
             # all_models = self.get_all_models()
             counts = self.get_model_count()
             logger.info(
-                f"Successfully preloaded {counts['total']} models "
-                f"({counts['groq']} Groq, {counts['ollama']} Ollama)"
+                f"Successfully preloaded {counts['total']} models ({counts['groq']} Groq, {counts['ollama']} Ollama)"
             )
             return counts
         except Exception as e:

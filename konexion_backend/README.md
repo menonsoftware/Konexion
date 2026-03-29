@@ -35,21 +35,20 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ```bash
 git clone <repository-url>
-cd konexion_backend
+cd Konexion/konexion_backend
 ```
 
 ### 3. Create Virtual Environment and Install Dependencies
 
 ```bash
-# Create virtual environment with Python 3.12+
-uv venv --python 3.12
-
-# Activate virtual environment
-source .venv/bin/activate
-
-# Install dependencies
+# Create the backend-local virtual environment and install dependencies
 uv sync
+
+# Optional: activate the backend-local virtual environment
+source .venv/bin/activate
 ```
+
+This backend is managed as a `uv` application, not an installable Python package. Use `uv sync` and `uv run ...` from the `konexion_backend` directory instead of `pip install .`.
 
 ### 4. Environment Configuration
 
@@ -110,9 +109,9 @@ ENVIRONMENT="development"
 
 ```bash
 # Using UV
-uv run main.py
+uv run python main.py
 
-# Or activate venv and run directly
+# Or activate the backend-local venv and run directly
 source .venv/bin/activate
 python main.py
 ```

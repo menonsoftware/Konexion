@@ -3,8 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
-from ai_models.groq import stream_groq_chat
-from ai_models.ollama import stream_ollama_chat_websocket
+from ai_clients.unified_client import stream_chat
 from config import get_logging_config, get_security_config, get_server_config
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,7 +37,7 @@ async def lifespan(app: FastAPI):
         # Pre-load models to cache them
         counts = await model_registry.preload_models()
         logger.info(
-            f"Successfully pre-loaded {counts['total']} models " f"({counts['groq']} Groq, {counts['ollama']} Ollama)"
+            f"Successfully pre-loaded {counts['total']} models ({counts['groq']} Groq, {counts['ollama']} Ollama)"
         )
     except Exception as e:
         logger.warning(f"Failed to pre-load models: {e}")
@@ -82,7 +81,7 @@ async def get_models():
         ollama_count = len([m for m in all_models if m.client_type == "ollama"])
 
         logger.info(
-            f"Successfully fetched {len(all_models)} models " f"({groq_count} from Groq, {ollama_count} from Ollama)"
+            f"Successfully fetched {len(all_models)} models ({groq_count} from Groq, {ollama_count} from Ollama)"
         )
 
         return {"models": all_models}
@@ -176,10 +175,9 @@ async def route_model_request(
         max_tokens: Maximum tokens for generation
     """
     try:
-        if model_registry.is_groq_model(selected_model):
-            await stream_groq_chat(websocket, selected_model, messages, max_tokens)
-        elif model_registry.is_ollama_model(selected_model):
-            await stream_ollama_chat_websocket(websocket, selected_model, messages, max_tokens)
+        provider = model_registry.get_model_provider(selected_model)
+        if provider:
+            await stream_chat(websocket, selected_model, messages, max_tokens, provider)
         else:
             # Model not found in either service
             error_msg = f"Model '{selected_model}' not found in available models."

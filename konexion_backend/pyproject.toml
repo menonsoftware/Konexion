@@ -5,7 +5,7 @@ description = "Inference Web Models"
 requires-python = ">=3.12, <3.14.0"
 dependencies = [
     "fastapi[standard]>=0.116.1",
-    "groq>=0.31.0",
+    "openai>=2.30.0",
     "pre-commit>=4.3.0",
     "pydantic-settings>=2.10.1",
     "python-dotenv>=1.1.1",
@@ -24,10 +24,5 @@ dev = [
     "yamllint>=1.37.1",
 ]
 
-[project.scripts]
-lint = "ruff check ."
-format = "ruff format ."
-type-check = "mypy ."
-security-check = "bandit -r . -c bandit.yaml"
-sort-imports = "isort ."
-check-all = "python -c 'import subprocess; subprocess.run([\"ruff\", \"check\", \".\"]); subprocess.run([\"ruff\", \"format\", \"--check\", \".\"]); subprocess.run([\"mypy\", \".\"]); subprocess.run([\"bandit\", \"-r\", \".\", \"-c\", \"bandit.yaml\"])'"
+[tool.uv]
+package = false

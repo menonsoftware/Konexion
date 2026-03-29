@@ -4,27 +4,30 @@ import time
 from typing import Any
 
 import requests
-from config import get_groq_config
-from groq import Groq
+from config import get_groq_config, get_ollama_config
 from models.ai import AIModel
+from openai import OpenAI
 
 # Setup logging
 logger = logging.getLogger(__name__)
 
 # Get configuration
 groq_config = get_groq_config()
+ollama_config = get_ollama_config()
 
-# Initialize Groq client with configuration
+
+def _get_groq_client() -> OpenAI:
+    """Get an OpenAI client configured for Groq."""
+    if not groq_config.api_key:
+        logger.warning("Groq API key not configured")
+        raise Exception("Groq API key not configured, cannot initialize Groq client")
+    base_url = groq_config.url.rsplit("/models", 1)[0]
+    return OpenAI(api_key=groq_config.api_key, base_url=base_url)
 
 
-def get_groq_client() -> Groq:
-    """Get Groq client if API key is configured, else raise an exception."""
-    if groq_config.api_key:
-        groq_client = Groq(api_key=groq_config.api_key)
-        logger.info("Groq client initialized successfully")
-        return groq_client
-    logger.warning("Groq API key not configured, client not available")
-    raise Exception("Groq API key not configured, cannot initialize Groq client")
+def _get_ollama_client() -> OpenAI:
+    """Get an OpenAI client configured for Ollama."""
+    return OpenAI(api_key="ollama", base_url=f"{ollama_config.url}/v1")
 
 
 def get_groq_models() -> dict[str, Any]:
@@ -74,35 +77,78 @@ def get_groq_models() -> dict[str, Any]:
         return {"models": []}
 
 
-async def stream_groq_chat(
-    websocket: Any, model_name: str, messages: list[dict[str, Any]], max_tokens: int | None = None
+def get_ollama_models() -> dict[str, Any]:
+    """Fetch available models from Ollama API with proper error handling and logging."""
+    try:
+        models_url = f"{ollama_config.url}/api/tags"
+
+        logger.debug(f"Fetching Ollama models from: {models_url}")
+        response = requests.get(models_url, timeout=ollama_config.timeout)
+        response.raise_for_status()
+
+        data = response.json()
+        logger.debug(f"Received {len(data.get('models', []))} models from Ollama API")
+
+        all_models = [
+            {
+                "client_type": "ollama",
+                "model_id": model["name"],
+                "context_window": model.get("context_length", 4096),
+                "owned_by": "ollama",
+            }
+            for model in data.get("models", [])
+        ]
+
+        ollama_models = [AIModel.model_validate(model) for model in all_models]
+        logger.info(f"Successfully loaded {len(ollama_models)} Ollama models")
+        return {"models": ollama_models}
+
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error connecting to Ollama at {ollama_config.url}: {e} (Status: {e.response.status_code})")
+        return {"models": []}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error connecting to Ollama at {ollama_config.url}: {e}")
+        return {"models": []}
+    except Exception as e:
+        logger.error(f"Unexpected error fetching Ollama models: {e}", exc_info=True)
+        return {"models": []}
+
+
+async def stream_chat(
+    websocket: Any,
+    model_name: str,
+    messages: list[dict[str, Any]],
+    max_tokens: int | None = None,
+    provider: str = "groq",
 ) -> None:
     """
-    Stream chat response from Groq model with WebSocket integration.
+    Stream chat response from any OpenAI-compatible provider via WebSocket.
 
     Args:
         websocket: WebSocket connection to send chunks
-        model_name (str): Name of the Groq model
-        messages (list): List of message objects with role and content
-        max_tokens (int, optional): Maximum number of tokens to generate
+        model_name: Name of the model
+        messages: List of message objects with role and content
+        max_tokens: Maximum number of tokens to generate
+        provider: Provider name ('groq' or 'ollama')
     """
     try:
-        logger.info(f"Using Groq client for model: {model_name}")
+        client = _get_groq_client() if provider == "groq" else _get_ollama_client()
 
-        # Prepare chat completion parameters
-        completion_params = {
+        logger.info(f"Using {provider} OpenAI client for model: {model_name}")
+
+        completion_params: dict[str, Any] = {
             "model": str(model_name),
             "messages": messages,
-            "stop": None,
             "stream": True,
         }
 
-        # Add max_tokens if provided
         if max_tokens is not None:
             completion_params["max_tokens"] = max_tokens
             logger.debug(f"Using custom max_tokens: {max_tokens}")
+        elif provider == "ollama":
+            completion_params["max_tokens"] = ollama_config.max_tokens
 
-        stream = get_groq_client().chat.completions.create(**completion_params)
+        stream = client.chat.completions.create(**completion_params)
 
         # Batch chunks for better network efficiency
         chunk_buffer = ""
@@ -135,9 +181,9 @@ async def stream_groq_chat(
             await websocket.send_json({"chunk": chunk_buffer})
 
         await websocket.send_json({"finish_reason": "completed"})
-        logger.info(f"Completed Groq chat response for model: {model_name}")
+        logger.info(f"Completed {provider} chat response for model: {model_name}")
 
     except Exception as e:
-        logger.error(f"Error streaming from Groq: {e}", exc_info=True)
+        logger.error(f"Error streaming from {provider}: {e}", exc_info=True)
         await websocket.send_json({"error": f"Error: {str(e)}"})
         await websocket.send_json({"finish_reason": "error"})

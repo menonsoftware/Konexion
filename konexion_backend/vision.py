@@ -159,14 +159,14 @@ class VisionProcessor:
         for i, image in enumerate(images):
             if image.get("data"):
                 data_url = image["data"]
-                logger.debug(f"Image {i+1} data URL prefix: {data_url[:100] if len(data_url) > 100 else data_url}")
+                logger.debug(f"Image {i + 1} data URL prefix: {data_url[:100] if len(data_url) > 100 else data_url}")
                 base64_data, image_type = self.extract_base64_from_data_url(data_url)
                 if base64_data:
                     images_list.append(base64_data)
                 else:
-                    logger.warning(f"Failed to extract base64 data from image {i+1}")
+                    logger.warning(f"Failed to extract base64 data from image {i + 1}")
             else:
-                logger.warning(f"Image {i+1} missing 'data' field")
+                logger.warning(f"Image {i + 1} missing 'data' field")
 
         return text_content, images_list
 
