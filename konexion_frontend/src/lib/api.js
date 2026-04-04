@@ -5,7 +5,7 @@ const API_BASE_URL = config.api.baseUrl;
 
 export async function fetchAvailableModels() {
 	try {
-		const response = await fetch(`${API_BASE_URL}/models`);
+		const response = await fetch(`${API_BASE_URL}/models`, { credentials: 'include' });
 		if (!response.ok) {
 			throw new Error('Failed to fetch models');
 		}
@@ -20,7 +20,7 @@ export async function fetchAvailableModels() {
 
 export async function checkBackendHealth() {
 	try {
-		const response = await fetch(`${API_BASE_URL}/health`);
+		const response = await fetch(`${API_BASE_URL}/health`, { credentials: 'include' });
 		return response.ok;
 	} catch (error) {
 		console.error('Backend health check failed:', error);
@@ -32,6 +32,7 @@ export async function refreshModels() {
 	try {
 		const response = await fetch(`${API_BASE_URL}/models/refresh`, {
 			method: 'POST',
+			credentials: 'include',
 			headers: {
 				'Content-Type': 'application/json'
 			}

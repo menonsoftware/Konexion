@@ -4,7 +4,7 @@ Configuration module for the Konexion backend application.
 Loads all environment variables using Pydantic Settings for type safety and validation.
 """
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -35,10 +35,44 @@ class Settings(BaseSettings):  # type: ignore[misc]
     database_max_connections: int = Field(default=10, description="Maximum database connections")
 
     # Security Configuration
-    secret_key: str | None = Field(default=None, description="Secret key for JWT and sessions")
+    secret_key: str = Field(
+        default="change-me-to-a-random-32-char-secret!!", description="Secret key for JWT and sessions (min 32 chars)"
+    )
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
-    access_token_expire_minutes: int = Field(default=30, description="Access token expiration time in minutes")
+    access_token_expire_minutes: int = Field(default=15, description="Access token expiration time in minutes")
+    refresh_token_expire_days: int = Field(default=7, description="Refresh token expiration time in days")
     cors_origins: str = Field(default="*", description="Comma-separated list of allowed CORS origins")
+
+    # OAuth Provider Configuration
+    google_client_id: str | None = Field(default=None, description="Google OAuth2 client ID")
+    google_client_secret: str | None = Field(default=None, description="Google OAuth2 client secret")
+    google_redirect_uri: str = Field(
+        default="http://localhost:8000/api/auth/google/callback", description="Google OAuth2 redirect URI"
+    )
+
+    microsoft_client_id: str | None = Field(default=None, description="Microsoft OAuth2 client ID")
+    microsoft_client_secret: str | None = Field(default=None, description="Microsoft OAuth2 client secret")
+    microsoft_tenant_id: str = Field(
+        default="common", description="Microsoft tenant ID (use 'common' for multi-tenant)"
+    )
+    microsoft_redirect_uri: str = Field(
+        default="http://localhost:8000/api/auth/microsoft/callback", description="Microsoft OAuth2 redirect URI"
+    )
+
+    # Frontend & Auth Shared Config
+    frontend_url: str = Field(
+        default="http://localhost:5173", description="Frontend application URL for post-auth redirects"
+    )
+    enabled_providers: str = Field(
+        default="google,microsoft", description="Comma-separated list of enabled OAuth providers"
+    )
+
+    @field_validator("secret_key")
+    @classmethod
+    def secret_key_min_length(cls, v: str) -> str:
+        if len(v) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters long")
+        return v
 
     # Logging Configuration
     log_level: str = Field(default="INFO", description="Logging level")
@@ -80,6 +114,11 @@ class Settings(BaseSettings):  # type: ignore[misc]
     def cors_origins_list(self) -> list[str]:
         """Convert CORS origins string to list."""
         return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    @property
+    def enabled_providers_list(self) -> list[str]:
+        """Convert enabled providers string to list."""
+        return [p.strip().lower() for p in self.enabled_providers.split(",") if p.strip()]
 
     @property
     def vision_models_list(self) -> list[str]:
@@ -182,6 +221,10 @@ class SecurityConfig:
         return self._settings.access_token_expire_minutes
 
     @property
+    def refresh_token_expire_days(self) -> int:
+        return self._settings.refresh_token_expire_days
+
+    @property
     def cors_origins(self) -> str:
         return self._settings.cors_origins
 
@@ -227,6 +270,49 @@ class VisionConfig:
         """Check if a model supports vision capabilities."""
         model_lower = model_name.lower()
         return any(vision_keyword in model_lower for vision_keyword in self.models_list)
+
+
+class OAuthConfig:
+    """OAuth provider configuration accessor."""
+
+    def __init__(self, settings: Settings):
+        self._settings = settings
+
+    @property
+    def google_client_id(self) -> str | None:
+        return self._settings.google_client_id
+
+    @property
+    def google_client_secret(self) -> str | None:
+        return self._settings.google_client_secret
+
+    @property
+    def google_redirect_uri(self) -> str:
+        return self._settings.google_redirect_uri
+
+    @property
+    def microsoft_client_id(self) -> str | None:
+        return self._settings.microsoft_client_id
+
+    @property
+    def microsoft_client_secret(self) -> str | None:
+        return self._settings.microsoft_client_secret
+
+    @property
+    def microsoft_tenant_id(self) -> str:
+        return self._settings.microsoft_tenant_id
+
+    @property
+    def microsoft_redirect_uri(self) -> str:
+        return self._settings.microsoft_redirect_uri
+
+    @property
+    def frontend_url(self) -> str:
+        return self._settings.frontend_url
+
+    @property
+    def enabled_providers(self) -> list[str]:
+        return self._settings.enabled_providers_list
 
 
 class MCPConfig:
@@ -284,6 +370,7 @@ logging_config = LoggingConfig(settings)
 vision_config = VisionConfig(settings)
 mcp_config = MCPConfig(settings)
 db_config = DBConfig(settings)
+oauth_config = OAuthConfig(settings)
 
 
 def get_settings() -> Settings:
@@ -300,7 +387,7 @@ def reload_settings() -> Settings:
     Useful for testing or runtime configuration changes.
     """
     global settings, groq_config, ollama_config, server_config
-    global database_config, security_config, logging_config, vision_config, mcp_config, db_config
+    global database_config, security_config, logging_config, vision_config, mcp_config, db_config, oauth_config
     settings = Settings()
     groq_config = GroqConfig(settings)
     ollama_config = OllamaConfig(settings)
@@ -311,6 +398,7 @@ def reload_settings() -> Settings:
     vision_config = VisionConfig(settings)
     mcp_config = MCPConfig(settings)
     db_config = DBConfig(settings)
+    oauth_config = OAuthConfig(settings)
 
     return settings
 
@@ -354,6 +442,11 @@ def get_vision_config() -> VisionConfig:
 def get_mcp_config() -> MCPConfig:
     """Get Model Context Protocol (MCP) configuration."""
     return mcp_config
+
+
+def get_oauth_config() -> OAuthConfig:
+    """Get OAuth provider configuration."""
+    return oauth_config
 
 
 # Export commonly used settings for easy access

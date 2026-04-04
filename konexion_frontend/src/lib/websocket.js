@@ -7,6 +7,7 @@ import {
 	maxTokens
 } from '$lib/stores.js';
 import { browser } from '$app/environment';
+import { goto } from '$app/navigation';
 import { perfMonitor } from '$lib/performance.js';
 import { config, getWebSocketUrl } from '$lib/config.js';
 
@@ -38,9 +39,15 @@ export class WebSocketService {
 				this.reconnectAttempts = 0;
 			};
 
-			this.ws.onclose = () => {
+			this.ws.onclose = (event) => {
 				console.log('WebSocket connection closed');
 				isConnected.set(false);
+				// Code 4401 means the server rejected the connection due to missing/invalid auth
+				if (event.code === 4401) {
+					console.warn('WebSocket closed: unauthenticated — redirecting to login');
+					goto('/login');
+					return;
+				}
 				this.handleReconnect();
 			};
 

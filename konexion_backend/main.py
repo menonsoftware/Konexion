@@ -5,10 +5,14 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
 from utils.model_registry import model_registry
 
-from konexion_backend.config import get_logging_config, get_security_config, get_server_config
+from konexion_backend.config import get_logging_config, get_oauth_config, get_security_config, get_server_config
+from konexion_backend.models.db_model import database
+from konexion_backend.routers.auth_router import router as auth_router
+from konexion_backend.services.auth_service import verify_access_token
 from konexion_backend.services.unified_ai_service import stream_chat
 from konexion_backend.services.vision_service import prepare_vision_message, process_vision_request
 
@@ -33,6 +37,15 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logger.info("Starting Konexion AI Backend")
+
+    # Initialise database and create all tables
+    logger.info("Initialising database...")
+    try:
+        await database.init_db()
+        logger.info("Database initialised successfully")
+    except Exception as e:
+        logger.error(f"Database initialisation failed: {e}")
+
     logger.info("Pre-loading model registry...")
     try:
         # Pre-load models to cache them
@@ -57,18 +70,26 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add CORS middleware using configuration
+# Session middleware — required by authlib for OAuth state/nonce storage.
+# Must be added before CORS so it wraps the full request lifecycle.
 security_config = get_security_config()
+app.add_middleware(SessionMiddleware, secret_key=security_config.secret_key)
+
+# CORS — origins are locked to FRONTEND_URL; wildcard removed.
+oauth_cfg = get_oauth_config()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=security_config.cors_origins_list,
+    allow_origins=[oauth_cfg.frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Auth router
+app.include_router(auth_router, prefix="/api")
+
 logger.info("FastAPI application initialized with CORS middleware")
-logger.info(f"CORS origins: {security_config.cors_origins_list}")
+logger.info(f"CORS origins: {[oauth_cfg.frontend_url]}")
 
 
 @app.get("/api/models")
@@ -193,6 +214,19 @@ async def route_model_request(
 @app.websocket("/ws/chat")
 async def chat(websocket: WebSocket):
     """WebSocket endpoint for real-time chat with AI models."""
+    # Authenticate before accepting the connection
+    token = websocket.cookies.get("access_token")
+    if not token:
+        await websocket.close(code=4401)
+        logger.warning("WebSocket rejected: no access_token cookie")
+        return
+    try:
+        verify_access_token(token)
+    except Exception:
+        await websocket.close(code=4401)
+        logger.warning("WebSocket rejected: invalid access_token")
+        return
+
     await websocket.accept()
     logger.info("WebSocket connection established")
 

@@ -44,6 +44,8 @@ target-version = "py312"
 # - flake8-comprehensions (`C4`) for comprehension improvements
 # Note: Removed `I` (isort) to avoid conflicts with standalone isort tool
 select = ["E", "F", "N", "UP", "B", "SIM", "C4", "W", "TCH"]
+# B008: FastAPI's Depends() in function signatures is intentional DI, not an accidental call
+ignore = ["B008"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]

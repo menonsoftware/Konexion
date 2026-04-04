@@ -2,13 +2,25 @@
 	import '../app.css';
 	import favicon from '$lib/assets/konexion.png';
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { isDarkMode } from '$lib/stores.js';
+	import { checkAuth } from '$lib/auth.js';
 
 	let { children } = $props();
 
-	// Initialize dark mode on mount to ensure proper synchronization
-	onMount(() => {
+	// Public routes that do not require authentication
+	const PUBLIC_ROUTES = ['/login'];
+
+	onMount(async () => {
 		isDarkMode.init();
+		const currentPath = $page.url.pathname;
+		if (PUBLIC_ROUTES.includes(currentPath)) return;
+
+		const authed = await checkAuth();
+		if (!authed) {
+			goto('/login');
+		}
 	});
 </script>
 
