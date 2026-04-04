@@ -70,6 +70,12 @@ class Settings(BaseSettings):  # type: ignore[misc]
     mcp_enabled: bool = Field(default=False, description="Whether to enable Model Context Protocol (MCP)")
     mcp_gateway_timeout: int = Field(default=30, description="Timeout for MCP gateway requests in seconds")
 
+    postgres_host: str = Field(default="localhost", description="PostgreSQL host")
+    postgres_port: int = Field(default=5432, description="PostgreSQL port")
+    postgres_user: str = Field(default="postgres", description="PostgreSQL user")
+    postgres_password: str = Field(default="password", description="PostgreSQL password")
+    postgres_db: str = Field(default="konexion_db", description="PostgreSQL database name")
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Convert CORS origins string to list."""
@@ -240,6 +246,31 @@ class MCPConfig:
         return self._settings.mcp_gateway_timeout
 
 
+class DBConfig:
+    def __init__(self, settings: Settings):
+        self._settings = settings
+
+    @property
+    def postgres_host(self) -> str:
+        return self._settings.postgres_host
+
+    @property
+    def postgres_port(self) -> int:
+        return self._settings.postgres_port
+
+    @property
+    def postgres_user(self) -> str:
+        return self._settings.postgres_user
+
+    @property
+    def postgres_password(self) -> str:
+        return self._settings.postgres_password
+
+    @property
+    def postgres_db(self) -> str:
+        return self._settings.postgres_db
+
+
 # Global settings instance
 settings = Settings()
 
@@ -252,6 +283,7 @@ security_config = SecurityConfig(settings)
 logging_config = LoggingConfig(settings)
 vision_config = VisionConfig(settings)
 mcp_config = MCPConfig(settings)
+db_config = DBConfig(settings)
 
 
 def get_settings() -> Settings:
@@ -268,7 +300,7 @@ def reload_settings() -> Settings:
     Useful for testing or runtime configuration changes.
     """
     global settings, groq_config, ollama_config, server_config
-    global database_config, security_config, logging_config, vision_config, mcp_config
+    global database_config, security_config, logging_config, vision_config, mcp_config, db_config
     settings = Settings()
     groq_config = GroqConfig(settings)
     ollama_config = OllamaConfig(settings)
@@ -278,6 +310,7 @@ def reload_settings() -> Settings:
     logging_config = LoggingConfig(settings)
     vision_config = VisionConfig(settings)
     mcp_config = MCPConfig(settings)
+    db_config = DBConfig(settings)
 
     return settings
 
@@ -333,6 +366,7 @@ __all__ = [
     "SecurityConfig",
     "LoggingConfig",
     "VisionConfig",
+    "DBConfig",
     "MCPConfig",
     "settings",
     "groq_config",
