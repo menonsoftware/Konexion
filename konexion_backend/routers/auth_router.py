@@ -31,6 +31,7 @@ from konexion_backend.services.auth_service import (
     upsert_user_from_oauth,
 )
 from konexion_backend.services.oauth_providers import (
+    get_authorize_token_kwargs,
     get_enabled_providers,
     get_oauth_client,
     get_redirect_uri,
@@ -87,7 +88,7 @@ async def oauth_callback(provider: str, request: Request):
     client = get_oauth_client(provider)
 
     try:
-        token = await client.authorize_access_token(request)
+        token = await client.authorize_access_token(request, **get_authorize_token_kwargs(provider))
     except Exception as exc:
         logger.warning("OAuth token exchange failed for %s: %s", provider, exc)
         raise HTTPException(

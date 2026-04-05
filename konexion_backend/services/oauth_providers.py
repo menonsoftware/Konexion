@@ -114,6 +114,25 @@ def is_valid_provider(provider: str) -> bool:
     return provider in _registered
 
 
+# Per-provider kwargs passed to authorize_access_token at callback time.
+# Microsoft's /common/ endpoint returns tokens whose 'iss' contains the real
+# tenant ID, which differs from the literal '{tenantid}' placeholder in the
+# /common/ discovery document.  Disabling issuer validation is the documented
+# workaround; the token signature is still fully verified via JWKS.
+_AUTHORIZE_TOKEN_KWARGS: dict[str, dict[str, Any]] = {
+    "microsoft": {
+        "claims_options": {
+            "iss": {"essential": False},
+        },
+    },
+}
+
+
+def get_authorize_token_kwargs(provider: str) -> dict[str, Any]:
+    """Return extra kwargs to pass to client.authorize_access_token() for a provider."""
+    return _AUTHORIZE_TOKEN_KWARGS.get(provider, {})
+
+
 def get_redirect_uri(provider: str) -> str:
     """Return the configured redirect URI for a provider."""
     cfg = get_oauth_config()
