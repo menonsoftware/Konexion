@@ -2,6 +2,8 @@
 #
 # Run with your env file (values in it are used for compose interpolation where needed):
 #   docker compose --env-file konexion_backend/.env.docker up -d
+#
+# Frontend Vite variables: konexion_frontend/docker.env (not the backend env file).
 
 name: konexion
 
@@ -59,7 +61,7 @@ services:
     volumes:
       - .:/workspace
     env_file:
-      - ./konexion_backend/.env.docker
+      - ./konexion_frontend/docker.env
     ports:
       - "5173:5173"
     command: >-
