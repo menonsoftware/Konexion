@@ -18,6 +18,7 @@ help:
 	@echo "  clean             Clean build artifacts and caches"
 	@echo "  dev-backend       Start backend development server"
 	@echo "  dev-frontend      Start frontend development server"
+	@echo "  start-all         Start both backend and frontend development servers"
 
 # Installation targets
 install-all: install-backend install-frontend

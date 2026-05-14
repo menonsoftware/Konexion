@@ -1,0 +1,68 @@
+# Konexion stack: PostgreSQL, FastAPI backend, SvelteKit frontend.
+#
+# Run with your env file (values in it are used for compose interpolation where needed):
+#   docker compose --env-file konexion_backend/.env.docker up -d
+
+name: konexion
+
+networks:
+  web:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - ./konexion_backend/.env.docker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - web
+
+  backend:
+    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+    restart: unless-stopped
+    working_dir: /workspace/konexion_backend
+    volumes:
+      - .:/workspace
+    env_file:
+      - ./konexion_backend/.env.docker
+    environment:
+      PYTHONPATH: /workspace
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      RELOAD: "false"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
+    ports:
+      - "8000:8000"
+    command: >-
+      sh -c "uv sync && uv run python main.py"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - web
+
+  frontend:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /workspace/konexion_frontend
+    volumes:
+      - .:/workspace
+    env_file:
+      - ./konexion_backend/.env.docker
+    ports:
+      - "5173:5173"
+    command: >-
+      sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+    networks:
+      - web
