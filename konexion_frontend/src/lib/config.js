@@ -79,7 +79,16 @@ export function validateConfig() {
 
 // Function to get WebSocket URL
 export function getWebSocketUrl() {
+	const path = config.websocket.path;
+
+	// In dev, connect to the same host as the page so HTTPS + reverse proxy terminates TLS at the
+	// edge; Vite proxies /ws/* to the backend (plain ws). Avoids wss://localhost:8000 → TLS on HTTP.
+	if (typeof window !== 'undefined' && import.meta.env.DEV) {
+		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+		return `${protocol}//${window.location.host}${path}`;
+	}
+
 	const protocol =
 		typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-	return `${protocol}//${config.websocket.host}${config.websocket.path}`;
+	return `${protocol}//${config.websocket.host}${path}`;
 }
