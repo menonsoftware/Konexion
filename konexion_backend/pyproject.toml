@@ -2,7 +2,7 @@
 name = "web-konexion"
 version = "0.1.0"
 description = "Inference Web Models"
-requires-python = ">=3.12, <3.14.0"
+requires-python = ">=3.12, <=3.15.0"
 dependencies = [
     "asyncpg>=0.30.0",
     "fastapi[standard]>=0.116.1",
@@ -10,7 +10,8 @@ dependencies = [
     "mcp>=1.26.0",
     "openai>=2.30.0",
     "pre-commit>=4.3.0",
-    "pydantic-settings>=2.10.1",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
     "python-dotenv>=1.1.1",
     "requests>=2.32.5",
     "sqlalchemy>=2.0.48",
@@ -36,7 +37,7 @@ dev = [
 ]
 
 [tool.pyright]
-pythonVersion = "3.12"
+pythonVersion = "3.14"
 venvPath = "."
 venv = ".venv"
 
