@@ -60,10 +60,11 @@
 
 				modelsRefreshState.setResult({
 					success: true,
-					message: `Successfully refreshed ${result.totalModels} models (${result.groqModels} Groq, ${result.ollamaModels} Ollama)`,
+					message: `Successfully refreshed ${result.totalModels} models (${result.groqModels} Groq, ${result.ollamaModels} Ollama, ${result.openRouterModels} Open Router)`,
 					totalModels: result.totalModels,
 					groqModels: result.groqModels,
-					ollamaModels: result.ollamaModels
+					ollamaModels: result.ollamaModels,
+					openRouterModels: result.openRouterModels
 				});
 
 				// Show success notification
@@ -75,6 +76,7 @@
 							<li><strong>${result.totalModels}</strong> total models loaded</li>
 							<li><strong>${result.groqModels}</strong> Groq models</li>
 							<li><strong>${result.ollamaModels}</strong> Ollama models</li>
+							<li><strong>${result.openRouterModels}</strong> Open Router models</li>
 						</ul>
 						<p class="mt-3 text-xs text-gray-500">
 							Refreshed at ${new Date().toLocaleTimeString()}

@@ -1,6 +1,7 @@
 <script>
 	import { selectedModel, availableModels, isLoading, maxTokens } from '$lib/stores.js';
 	import { wsService } from '$lib/websocket.js';
+	import { filterModels, formatClientType } from '$lib/models.js';
 
 	let message = '';
 	let textarea;
@@ -11,13 +12,8 @@
 	let selectedImages = [];
 	let fileInput;
 
-	// Filter models based on search query
-	$: filteredModels = $availableModels.filter((model) => {
-		const query = modelSearchQuery.toLowerCase();
-		return (
-			model.model_id.toLowerCase().includes(query) || model.owned_by.toLowerCase().includes(query)
-		);
-	});
+	// Filter models based on search query (includes Open Router models from backend)
+	$: filteredModels = filterModels($availableModels, modelSearchQuery);
 
 	// Check if current model supports vision
 	$: supportsVision =
@@ -383,7 +379,7 @@
 									{modelSearchQuery ? 'No models found' : 'Loading models...'}
 								</div>
 							{:else}
-								{#each filteredModels as model, index (model.model_id)}
+								{#each filteredModels as model, index (model.model_id + "-" + index)}
 									<button
 										type="button"
 										on:click={() => selectModel(model)}
@@ -400,7 +396,7 @@
 												<span
 													class="inline-flex flex-shrink-0 items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200"
 												>
-													{model.client_type}
+													{formatClientType(model.client_type)}
 												</span>
 												{#if model.model_id.toLowerCase().includes('llava') || model.model_id
 														.toLowerCase()

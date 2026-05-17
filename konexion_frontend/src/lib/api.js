@@ -53,6 +53,7 @@ export async function refreshModels() {
 			totalModels: data.total_models,
 			groqModels: data.groq_models,
 			ollamaModels: data.ollama_models,
+			openRouterModels: data.open_router_models ?? 0,
 			message: data.message
 		};
 	} catch (error) {

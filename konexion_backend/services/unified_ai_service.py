@@ -6,7 +6,7 @@ from typing import Any
 import requests
 from openai import OpenAI
 
-from konexion_backend.config import get_groq_config, get_ollama_config
+from konexion_backend.config import get_groq_config, get_ollama_config, get_open_router_config
 from konexion_backend.models.ai_model import AIModel
 
 # Setup logging
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # Get configuration
 groq_config = get_groq_config()
 ollama_config = get_ollama_config()
-
+open_router_config = get_open_router_config()
 
 def _get_groq_client() -> OpenAI:
     """Get an OpenAI client configured for Groq."""
@@ -115,6 +115,68 @@ def get_ollama_models() -> dict[str, Any]:
         return {"models": []}
 
 
+def get_open_router_models() -> dict[str, Any]:
+    """Fetch available models from Open Router API with proper error handling and logging."""
+    if not open_router_config.api_key:
+        logger.warning("Open Router API key not configured, returning empty model list")
+        return {"models": []}
+
+    headers = {
+        "Authorization": f"Bearer {open_router_config.api_key}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        logger.debug(f"Fetching Open Router models from: {open_router_config.url}")
+        response = requests.get(open_router_config.url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        data = response.json()
+        models_list = data.get("models") or data.get("data") or []
+        logger.debug(f"Received {len(models_list)} models from Open Router API")
+
+        all_models = []
+        for model in models_list:
+            model_id = model.get("id") or model.get("model_id") or model.get("canonical_slug")
+            if not model_id:
+                continue
+
+            all_models.append(
+                {
+                    "client_type": "open_router",
+                    "model_id": model_id,
+                    "context_window": model.get("context_window", model.get("context_length", 0)),
+                    "owned_by": model.get("owned_by", model.get("name", "open_router")),
+                }
+            )
+
+        open_router_models = [AIModel.model_validate(model) for model in all_models]
+        logger.info(f"Successfully loaded {len(open_router_models)} Open Router models")
+        return {"models": open_router_models}
+
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error fetching Open Router models: {e} (Status: {e.response.status_code})")
+        return {"models": []}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error fetching Open Router models: {e}")
+        return {"models": []}
+    except Exception as e:
+        logger.error(f"Unexpected error fetching Open Router models: {e}", exc_info=True)
+        return {"models": []}
+
+def _get_open_router_client() -> OpenAI:
+    """Get an OpenAI client configured for Open Router."""
+    if not open_router_config.api_key:
+        logger.warning("Open Router API key not configured")
+        raise Exception("Open Router API key not configured, cannot initialize Open Router client")
+
+    base_url = open_router_config.url
+    if base_url.endswith("/models"):
+        base_url = base_url.rsplit("/models", 1)[0]
+
+    logger.debug(f"Initializing Open Router client with base URL: {base_url}")
+    return OpenAI(api_key=open_router_config.api_key, base_url=base_url)
+
 async def stream_chat(
     websocket: Any,
     model_name: str,
@@ -133,7 +195,14 @@ async def stream_chat(
         provider: Provider name ('groq' or 'ollama')
     """
     try:
-        client = _get_groq_client() if provider == "groq" else _get_ollama_client()
+        if provider == "groq":
+            client = _get_groq_client()
+        elif provider == "ollama":
+            client = _get_ollama_client()
+        elif provider == "open_router":
+            client = _get_open_router_client()
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
 
         logger.info(f"Using {provider} OpenAI client for model: {model_name}")
 

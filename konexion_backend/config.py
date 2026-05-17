@@ -20,6 +20,9 @@ class Settings(BaseSettings):  # type: ignore[misc]
     ollama_timeout: int = Field(default=30, description="Request timeout in seconds")
     ollama_max_tokens: int = Field(default=2048, description="Maximum number of tokens to generate in responses")
 
+    open_router_api_url: str = Field(default="https://openrouter.ai/api/v1/models", description="Open Router Models API URL")
+    open_router_api_key: str | None = Field(default=None, description="Open Router Models API key")
+
     # Server Configuration
     server_host: str = Field(
         default="0.0.0.0",
@@ -140,6 +143,19 @@ class GroqConfig:
     def url(self) -> str:
         return self._settings.groq_url
 
+class OpenRouterConfig:
+    """Open Router configuration accessor."""
+
+    def __init__(self, settings: Settings):
+        self._settings = settings
+
+    @property
+    def api_key(self) -> str | None:
+        return self._settings.open_router_api_key
+
+    @property
+    def url(self) -> str:
+        return self._settings.open_router_api_url
 
 class OllamaConfig:
     """Ollama configuration accessor."""
@@ -209,7 +225,7 @@ class SecurityConfig:
         self._settings = settings
 
     @property
-    def secret_key(self) -> str | None:
+    def secret_key(self) -> str:
         return self._settings.secret_key
 
     @property
@@ -363,6 +379,7 @@ settings = Settings()
 # Configuration accessors
 groq_config = GroqConfig(settings)
 ollama_config = OllamaConfig(settings)
+open_router_config = OpenRouterConfig(settings)
 server_config = ServerConfig(settings)
 database_config = DatabaseConfig(settings)
 security_config = SecurityConfig(settings)
@@ -386,11 +403,12 @@ def reload_settings() -> Settings:
     Reload settings from environment variables and .env file.
     Useful for testing or runtime configuration changes.
     """
-    global settings, groq_config, ollama_config, server_config
+    global settings, groq_config, ollama_config, open_router_config, server_config
     global database_config, security_config, logging_config, vision_config, mcp_config, db_config, oauth_config
     settings = Settings()
     groq_config = GroqConfig(settings)
     ollama_config = OllamaConfig(settings)
+    open_router_config = OpenRouterConfig(settings)
     server_config = ServerConfig(settings)
     database_config = DatabaseConfig(settings)
     security_config = SecurityConfig(settings)
@@ -412,6 +430,10 @@ def get_groq_config() -> GroqConfig:
 def get_ollama_config() -> OllamaConfig:
     """Get Ollama configuration."""
     return ollama_config
+
+def get_open_router_config() -> OpenRouterConfig:
+    """Get Open Router configuration."""
+    return open_router_config
 
 
 def get_server_config() -> ServerConfig:
@@ -454,6 +476,7 @@ __all__ = [
     "Settings",
     "GroqConfig",
     "OllamaConfig",
+    "OpenRouterConfig",
     "ServerConfig",
     "DatabaseConfig",
     "SecurityConfig",
@@ -464,6 +487,7 @@ __all__ = [
     "settings",
     "groq_config",
     "ollama_config",
+    "open_router_config",
     "server_config",
     "database_config",
     "security_config",
@@ -473,10 +497,12 @@ __all__ = [
     "reload_settings",
     "get_groq_config",
     "get_ollama_config",
+    "get_open_router_config",
     "get_server_config",
     "get_database_config",
     "get_security_config",
     "get_logging_config",
     "get_vision_config",
     "get_mcp_config",
+    "get_oauth_config",
 ]

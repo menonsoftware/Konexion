@@ -35,5 +35,10 @@ dev = [
     "yamllint>=1.37.1",
 ]
 
+[tool.pyright]
+pythonVersion = "3.12"
+venvPath = "."
+venv = ".venv"
+
 [tool.uv]
 package = false

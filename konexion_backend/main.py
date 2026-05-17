@@ -7,7 +7,7 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
-from utils.model_registry import model_registry
+from konexion_backend.utils.model_registry import model_registry
 
 from konexion_backend.config import get_logging_config, get_oauth_config, get_security_config, get_server_config
 from konexion_backend.models.db_model import database
@@ -101,9 +101,10 @@ async def get_models():
 
         groq_count = len([m for m in all_models if m.client_type == "groq"])
         ollama_count = len([m for m in all_models if m.client_type == "ollama"])
+        open_router_count = len([m for m in all_models if m.client_type == "open_router"])
 
         logger.info(
-            f"Successfully fetched {len(all_models)} models ({groq_count} from Groq, {ollama_count} from Ollama)"
+            f"Successfully fetched {len(all_models)} models ({groq_count} from Groq, {ollama_count} from Ollama, {open_router_count} from Open Router)"
         )
 
         return {"models": all_models}
@@ -309,6 +310,7 @@ async def refresh_models():
             "total_models": counts["total"],
             "groq_models": counts["groq"],
             "ollama_models": counts["ollama"],
+            "open_router_models": counts["open_router"],
         }
     except Exception as e:
         logger.error(f"Error refreshing model cache: {e}", exc_info=True)
